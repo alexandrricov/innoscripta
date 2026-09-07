@@ -1,0 +1,17 @@
+{
+  "name": "baseline-planning-suite",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.8.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "pnpm --recursive --stream test",
+    "build": "pnpm --recursive --stream build"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
