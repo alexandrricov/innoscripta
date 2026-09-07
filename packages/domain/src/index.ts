@@ -14,6 +14,7 @@ export {
   type YearMonth,
   yearMonth,
 } from './calendar.ts';
+export { hoursPerWorkingDay, personMonthHours } from './person-month.ts';
 export {
   countWorkingDays,
   workingDaysBefore,
