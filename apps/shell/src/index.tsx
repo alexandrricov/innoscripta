@@ -1,15 +1,13 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+/**
+ * The async boundary.
+ *
+ * Federated `shared` modules resolve asynchronously: the runtime has to
+ * negotiate which copy of React wins before any module that imports React is
+ * evaluated. An entry that imports React statically is evaluated too early and
+ * fails with "Invalid loadShareSync function call".
+ *
+ * So the entry stays deliberately thin - one dynamic import and nothing else.
+ * Everything that touches React lives behind it in bootstrap.tsx.
+ */
 
-import { App } from './App.tsx';
-
-const container = document.getElementById('root');
-if (!container) {
-  throw new Error('Root container #root is missing from index.html');
-}
-
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+void import('./bootstrap.tsx');

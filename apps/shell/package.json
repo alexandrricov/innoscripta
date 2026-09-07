@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@baseline/domain": "workspace:*",
+    "@module-federation/enhanced": "2.9.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@baseline/mf-shared": "workspace:*",
     "@rspack/cli": "2.2.2",
     "@rspack/core": "2.2.2",
     "@rspack/dev-server": "2.2.1",
