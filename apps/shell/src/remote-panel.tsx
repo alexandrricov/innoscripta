@@ -8,7 +8,7 @@
  * thrown while the remote renders.
  */
 
-import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
+import { Component, type ErrorInfo, lazy, type ReactNode, Suspense } from 'react';
 
 import { loadRemoteApp } from './remotes.ts';
 import type { RemoteName } from './runtime-config.ts';

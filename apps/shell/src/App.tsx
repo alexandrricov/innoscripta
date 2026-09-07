@@ -16,7 +16,9 @@ export function App() {
               <li key={remote}>
                 <button
                   type="button"
-                  onClick={() => setActive(remote)}
+                  onClick={() => {
+                    setActive(remote);
+                  }}
                   aria-current={remote === active ? 'page' : undefined}
                 >
                   {remote}

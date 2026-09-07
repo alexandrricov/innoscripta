@@ -12,8 +12,8 @@ import type { ComponentType } from 'react';
 import {
   brokenRemotes,
   readRuntimeConfig,
-  remoteEntryUrl,
   REMOTE_NAMES,
+  remoteEntryUrl,
   type RemoteName,
 } from './runtime-config.ts';
 
