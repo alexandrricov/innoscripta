@@ -1,5 +1,13 @@
 export { allocationCost, blendedHourlyRate, hoursFromCost } from './allocation-cost.ts';
 export {
+  type Allocation,
+  type AssignmentRow,
+  type BreakdownItem,
+  type BreakdownRow,
+  type ItemRow,
+  rollUpHours,
+} from './breakdown.ts';
+export {
   type CalendarDay,
   calendarDay,
   compareCalendarDay,
