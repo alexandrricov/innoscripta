@@ -15,6 +15,7 @@ export {
   yearMonth,
 } from './calendar.ts';
 export { hoursPerWorkingDay, personMonthHours } from './person-month.ts';
+export { type RateRecord, type RateSlice, splitMonthByRates } from './rate-schedule.ts';
 export {
   countWorkingDays,
   workingDaysBefore,
