@@ -18,6 +18,14 @@ export {
 export { hoursPerWorkingDay, personMonthHours } from './person-month.ts';
 export { type RateRecord, type RateSlice, splitMonthByRates } from './rate-schedule.ts';
 export {
+  type EmployeeMonth,
+  formatUnit,
+  fromUnit,
+  GRID_UNITS,
+  type GridUnit,
+  toUnit,
+} from './units.ts';
+export {
   countWorkingDays,
   workingDaysBefore,
   workingDaysFrom,
