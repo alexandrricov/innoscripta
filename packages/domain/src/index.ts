@@ -17,6 +17,7 @@ export {
 } from './calendar.ts';
 export { hoursPerWorkingDay, personMonthHours } from './person-month.ts';
 export { type RateRecord, type RateSlice, splitMonthByRates } from './rate-schedule.ts';
+export { distributeRounded, type RoundedBreakdown } from './rounding.ts';
 export {
   type EmployeeMonth,
   formatUnit,
