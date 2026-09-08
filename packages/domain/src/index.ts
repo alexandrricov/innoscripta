@@ -1,3 +1,4 @@
+export { allocationCost, blendedHourlyRate, hoursFromCost } from './allocation-cost.ts';
 export {
   type CalendarDay,
   calendarDay,
