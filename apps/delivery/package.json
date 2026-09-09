@@ -6,11 +6,16 @@
   "scripts": {
     "dev": "rspack serve",
     "build": "cross-env NODE_ENV=production rspack build",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@baseline/domain": "workspace:*",
+    "@baseline/seed": "workspace:*",
+    "@baseline/theme": "workspace:*",
     "@module-federation/enhanced": "2.9.0",
+    "idb": "8.0.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -20,10 +25,13 @@
     "@rspack/core": "2.2.2",
     "@rspack/dev-server": "2.2.1",
     "@rspack/plugin-react-refresh": "2.0.2",
+    "@types/node": "26.5.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "cross-env": "^10.0.0",
+    "fake-indexeddb": "6.2.5",
     "react-refresh": "^0.17.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "5.0.0"
   }
 }

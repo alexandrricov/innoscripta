@@ -3,11 +3,15 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["react", "react-dom"],
+    "types": ["react", "react-dom", "node"],
     "rootDir": "./src",
     "outDir": "./dist/types",
     "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "references": [{ "path": "../../packages/domain" }]
+  "references": [
+    {
+      "path": "../../packages/domain"
+    }
+  ]
 }
