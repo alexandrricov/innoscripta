@@ -1,12 +1,19 @@
+import type { Oversubscription } from '../capacity/use-oversubscription.ts';
 import type { Employee } from '../data/people-store.ts';
 
 interface EmployeeListProps {
   readonly employees: readonly Employee[];
   readonly selectedId: string | undefined;
+  readonly oversubscription: Oversubscription;
   readonly onSelect: (employeeId: string) => void;
 }
 
-export function EmployeeList({ employees, selectedId, onSelect }: EmployeeListProps) {
+export function EmployeeList({
+  employees,
+  selectedId,
+  oversubscription,
+  onSelect,
+}: EmployeeListProps) {
   if (employees.length === 0) {
     return <p className="people-notice">Nobody in the register matches that.</p>;
   }
@@ -34,6 +41,19 @@ export function EmployeeList({ employees, selectedId, onSelect }: EmployeeListPr
               {employee.weeklyHours}
               <span className="people-register-unit"> h/week</span>
             </span>
+            {/*
+              Never colour alone: the badge carries a word as well, so it reads
+              the same to somebody who cannot tell the two apart.
+            */}
+            {(oversubscription.get(employee.id)?.length ?? 0) > 0 && (
+              <span className="people-register-flag">
+                over capacity
+                <span className="bl-visually-hidden">
+                  {' '}
+                  in {String(oversubscription.get(employee.id)?.length)} month(s)
+                </span>
+              </span>
+            )}
           </button>
         </li>
       ))}

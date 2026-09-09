@@ -6,6 +6,7 @@ import './styles.css';
 
 import { useMemo, useState } from 'react';
 
+import { type OverloadedMonth, useOversubscription } from './capacity/use-oversubscription.ts';
 import type { Employee } from './data/people-store.ts';
 import { EmployeeDetail } from './employee/employee-detail.tsx';
 import { EmployeeList } from './register/employee-list.tsx';
@@ -15,6 +16,7 @@ import { useEmployees } from './register/use-employees.ts';
 // A stable empty list, so the memoised filter is not invalidated by a fresh []
 // on every render while the register is still loading.
 const NO_EMPLOYEES: readonly Employee[] = [];
+const NO_MONTHS: readonly OverloadedMonth[] = [];
 
 export function App() {
   const state = useEmployees();
@@ -28,6 +30,9 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
   const employees = state.status === 'ready' ? state.employees : NO_EMPLOYEES;
+  // Delivery's numbers, People's verdict: capacity is weeklyHours * workingDays / 5
+  // and those hours are owned here.
+  const { oversubscription, unavailable } = useOversubscription(employees);
   const matches = useMemo(() => matchEmployees(employees, query), [employees, query]);
   const selected = employees.find((employee) => employee.id === selectedId);
 
@@ -72,11 +77,21 @@ export function App() {
                 setQuery(event.target.value);
               }}
             />
-            <EmployeeList employees={matches} selectedId={selectedId} onSelect={setSelectedId} />
+            <EmployeeList
+              employees={matches}
+              selectedId={selectedId}
+              oversubscription={oversubscription}
+              onSelect={setSelectedId}
+            />
           </div>
 
           {selected ? (
-            <EmployeeDetail key={selected.id} employee={selected} />
+            <EmployeeDetail
+              key={selected.id}
+              employee={selected}
+              overloadedMonths={oversubscription.get(selected.id) ?? NO_MONTHS}
+              capacityUnavailable={unavailable}
+            />
           ) : (
             <p className="people-notice people-detail-empty">
               Pick somebody to see and edit their cost-rate history.

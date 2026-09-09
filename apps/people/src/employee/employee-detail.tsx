@@ -1,5 +1,7 @@
 import { formatYearMonth, personMonthHours, yearMonth } from '@baseline/domain';
 
+import { OverCapacityNote } from '../capacity/over-capacity-note.tsx';
+import type { OverloadedMonth } from '../capacity/use-oversubscription.ts';
 import type { Employee } from '../data/people-store.ts';
 import { AddRateForm } from './add-rate-form.tsx';
 import { RateRow, rateRowKey } from './rate-row.tsx';
@@ -7,6 +9,8 @@ import { useRateHistory } from './use-rate-history.ts';
 
 interface EmployeeDetailProps {
   readonly employee: Employee;
+  readonly overloadedMonths: readonly OverloadedMonth[];
+  readonly capacityUnavailable: string | null;
 }
 
 /** The month the browser is in, in UTC, like every other date in this suite. */
@@ -15,7 +19,11 @@ function currentMonth() {
   return yearMonth(now.getUTCFullYear(), now.getUTCMonth() + 1);
 }
 
-export function EmployeeDetail({ employee }: EmployeeDetailProps) {
+export function EmployeeDetail({
+  employee,
+  overloadedMonths,
+  capacityUnavailable,
+}: EmployeeDetailProps) {
   const { state, save, remove } = useRateHistory(employee.id);
   const month = currentMonth();
 
@@ -39,6 +47,8 @@ export function EmployeeDetail({ employee }: EmployeeDetailProps) {
         */}
         <dd>{personMonthHours(employee.weeklyHours, month).toFixed(2)} h</dd>
       </dl>
+
+      <OverCapacityNote months={overloadedMonths} unavailable={capacityUnavailable} />
 
       <h4 className="people-detail-subheading">Cost-rate history</h4>
       <p className="people-detail-hint">
