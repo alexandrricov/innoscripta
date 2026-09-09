@@ -1,3 +1,6 @@
+import '@baseline/theme/theme.css';
+import './styles.css';
+
 import { useState } from 'react';
 
 import { RemotePanel } from './remote-panel.tsx';
@@ -8,14 +11,15 @@ export function App() {
 
   return (
     <>
-      <header>
-        <h1>Baseline</h1>
+      <header className="shell-header">
+        <h1 className="shell-title">Baseline</h1>
         <nav aria-label="Applications">
-          <ul>
+          <ul className="shell-nav-list">
             {REMOTE_NAMES.map((remote) => (
               <li key={remote}>
                 <button
                   type="button"
+                  className="shell-nav-button"
                   onClick={() => {
                     setActive(remote);
                   }}
@@ -28,7 +32,7 @@ export function App() {
           </ul>
         </nav>
       </header>
-      <main>
+      <main className="shell-main">
         <RemotePanel remote={active} />
       </main>
     </>
