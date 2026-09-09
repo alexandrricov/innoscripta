@@ -25,7 +25,14 @@ export function AddPersonRow({ itemName, columns, depth, available, onAdd }: Add
 
   return (
     <tr className="delivery-grid-add-row">
-      <th scope="row" style={{ paddingLeft: `${String(0.5 + (depth + 1) * 1.1)}rem` }}>
+      {/* The same sticky row header as every other row: this control belongs to
+          the work package above it, so it has to stay next to its name while the
+          months scroll. */}
+      <th
+        scope="row"
+        className="delivery-grid-rowhead"
+        style={{ paddingLeft: `${String(0.5 + (depth + 1) * 1.1)}rem` }}
+      >
         <label className="bl-visually-hidden" htmlFor={`add-person-${itemName}`}>
           Add somebody to {itemName}
         </label>

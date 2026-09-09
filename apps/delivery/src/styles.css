@@ -265,9 +265,20 @@
   letter-spacing: 0.04em;
 }
 
+/* The total is the one column worth keeping in view at all twelve months, so it
+   is pinned to the right the way the row header is pinned to the left. Both are
+   sticky against the same scroll container. */
 .delivery-grid-total {
+  position: sticky;
+  right: 0;
   border-left: 1px solid var(--colour-border);
+  background: var(--colour-surface);
   font-weight: 500;
+}
+
+/* Above the body's sticky cells when the header is scrolled over them. */
+.delivery-grid thead .delivery-grid-total {
+  z-index: 1;
 }
 
 .delivery-grid-cell {
