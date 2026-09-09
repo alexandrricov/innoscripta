@@ -8,11 +8,18 @@
 import {
   type Allocation,
   type BreakdownItem,
+  formatYearMonth,
   monthsBetween,
   parseYearMonth,
 } from '@baseline/domain';
 
-import { descendantsOf, moveProblem, nameProblem, newItemId } from '../breakdown/tree.ts';
+import {
+  descendantsOf,
+  moveProblem,
+  nameProblem,
+  newAllocationId,
+  newItemId,
+} from '../breakdown/tree.ts';
 import type { ChildInsertion, DeliveryStore } from './delivery-store.ts';
 import type { DeliverySlice } from './seed-slice.ts';
 
@@ -129,6 +136,43 @@ export function createInMemoryDeliveryStore(slice: DeliverySlice): DeliveryStore
           allocations.delete(allocation.id);
         }
       }
+
+      return Promise.resolve();
+    },
+
+    setCellHours: (breakdownItemId, employeeId, month, hours) => {
+      if (!Number.isFinite(hours) || hours < 0) {
+        return Promise.reject(new Error(`A cell cannot hold ${String(hours)} hours`));
+      }
+      if (!items.has(breakdownItemId)) {
+        return Promise.reject(
+          new Error(`Cannot allocate to unknown work package "${breakdownItemId}"`),
+        );
+      }
+
+      const monthKey = formatYearMonth(month);
+      const inCell = [...allocations.values()].filter(
+        (allocation) =>
+          allocation.breakdownItemId === breakdownItemId &&
+          allocation.employeeId === employeeId &&
+          formatYearMonth(allocation.month) === monthKey,
+      );
+
+      // One record per cell; anything else there folds into it.
+      const [keep, ...duplicates] = inCell;
+      for (const duplicate of duplicates) {
+        allocations.delete(duplicate.id);
+      }
+
+      const id = keep?.id ?? newAllocationId();
+      allocations.set(id, {
+        id,
+        breakdownItemId,
+        employeeId,
+        month,
+        hours,
+        editedAt: Date.now(),
+      });
 
       return Promise.resolve();
     },

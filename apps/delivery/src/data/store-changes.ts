@@ -56,6 +56,11 @@ export function withChangeNotifications(store: DeliveryStore): DeliveryStore {
       announce();
     },
 
+    setCellHours: async (breakdownItemId, employeeId, month, hours) => {
+      await store.setCellHours(breakdownItemId, employeeId, month, hours);
+      announce();
+    },
+
     saveAllocation: async (allocation) => {
       await store.saveAllocation(allocation);
       announce();

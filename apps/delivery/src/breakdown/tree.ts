@@ -187,3 +187,8 @@ export function pathOf(items: readonly BreakdownItem[], itemId: string): string 
 
   return names.join(' / ');
 }
+
+/** Ids stay recognisable as allocations; seeded ones keep their `alloc-001`. */
+export function newAllocationId(): string {
+  return `alloc-${crypto.randomUUID()}`;
+}

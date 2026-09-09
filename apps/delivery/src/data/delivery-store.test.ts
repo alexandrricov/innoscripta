@@ -363,3 +363,66 @@ describe('the grid horizon', () => {
     await expect(db.count('breakdownItems')).resolves.toBe(6);
   });
 });
+
+describe.each(implementations)('%s setCellHours', (_name, createStore) => {
+  let store: DeliveryStore;
+
+  beforeEach(async () => {
+    store = await createStore(fixture());
+  });
+
+  it('writes a value into an empty cell', async () => {
+    await store.setCellHours('leaf', 'emp-002', APRIL_2026, 40);
+
+    const allocations = await store.listAllocations('p1');
+    const written = allocations.find((entry) => entry.employeeId === 'emp-002');
+
+    expect(written).toMatchObject({ breakdownItemId: 'leaf', hours: 40 });
+  });
+
+  it('replaces what a cell already held', async () => {
+    await store.setCellHours('leaf', 'emp-001', APRIL_2026, 12);
+
+    const allocations = await store.listAllocations('p1');
+    const inCell = allocations.filter(
+      (entry) => entry.employeeId === 'emp-001' && entry.month.month === 4,
+    );
+
+    // Two records described this cell in the fixture; one is left, holding the
+    // value that was asked for.
+    expect(inCell).toHaveLength(1);
+    expect(inCell[0]?.hours).toBe(12);
+  });
+
+  it('keeps the record when the value is zero, so the row stays put', async () => {
+    await store.setCellHours('leaf', 'emp-001', APRIL_2026, 0);
+
+    const allocations = await store.listAllocations('p1');
+
+    expect(allocations.filter((entry) => entry.employeeId === 'emp-001')).toHaveLength(1);
+    expect(allocations.find((entry) => entry.employeeId === 'emp-001')?.hours).toBe(0);
+  });
+
+  it('stamps the edit, so R5 can name the assignment that caused an overload', async () => {
+    const before = Date.now();
+    await store.setCellHours('leaf', 'emp-001', APRIL_2026, 12);
+
+    const allocations = await store.listAllocations('p1');
+    const written = allocations.find((entry) => entry.employeeId === 'emp-001');
+
+    // Seeded rows carry 0, so any edit beats all of them.
+    expect(written?.editedAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it('refuses hours that cannot exist, and an unknown work package', async () => {
+    await expect(store.setCellHours('leaf', 'emp-001', APRIL_2026, -1)).rejects.toThrow(
+      /cannot hold/,
+    );
+    await expect(store.setCellHours('leaf', 'emp-001', APRIL_2026, Number.NaN)).rejects.toThrow(
+      /cannot hold/,
+    );
+    await expect(store.setCellHours('ghost', 'emp-001', APRIL_2026, 1)).rejects.toThrow(
+      /unknown work package/,
+    );
+  });
+});

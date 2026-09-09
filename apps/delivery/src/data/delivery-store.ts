@@ -60,6 +60,30 @@ export interface DeliveryStore {
   /** Takes the whole subtree and every allocation in it. */
   deleteItem(itemId: string): Promise<void>;
 
+  /**
+   * Sets what one cell of the grid holds.
+   *
+   * The cell, not an allocation id, is what the user edits: this person, on
+   * this piece of work, in this month. Addressing it that way removes an
+   * ambiguity the data model allows - nothing stops two allocation records
+   * describing the same triple, and then "which one did they mean" has no
+   * answer. Setting a cell collapses whatever is there into one record with the
+   * value the user asked for, in one transaction.
+   *
+   * Zero keeps the record rather than deleting it, so the row stays put while
+   * somebody corrects a typo instead of vanishing under the cursor. A zero adds
+   * nothing to any roll-up and an empty cell is not treated as unpriced.
+   *
+   * `editedAt` is stamped here, which is what lets rule R5 name the assignment
+   * that pushed a person over capacity.
+   */
+  setCellHours(
+    breakdownItemId: string,
+    employeeId: string,
+    month: YearMonth,
+    hours: number,
+  ): Promise<void>;
+
   saveAllocation(allocation: Allocation): Promise<void>;
   removeAllocation(allocationId: string): Promise<void>;
 }

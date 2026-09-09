@@ -9,11 +9,18 @@
 import {
   type Allocation,
   type BreakdownItem,
+  formatYearMonth,
   monthsBetween,
   parseYearMonth,
 } from '@baseline/domain';
 
-import { descendantsOf, moveProblem, nameProblem, newItemId } from '../breakdown/tree.ts';
+import {
+  descendantsOf,
+  moveProblem,
+  nameProblem,
+  newAllocationId,
+  newItemId,
+} from '../breakdown/tree.ts';
 import { type DeliveryDatabase, readGridHorizon } from './delivery-database.ts';
 import type { ChildInsertion, DeliveryStore } from './delivery-store.ts';
 
@@ -156,6 +163,43 @@ export function createIndexedDbDeliveryStore(db: DeliveryDatabase): DeliveryStor
       await tx.done;
     },
 
+    setCellHours: async (breakdownItemId, employeeId, month, hours) => {
+      assertHours(hours);
+
+      const tx = db.transaction(['breakdownItems', 'allocations'], 'readwrite');
+      const items = tx.objectStore('breakdownItems');
+      const allocations = tx.objectStore('allocations');
+
+      if ((await items.get(breakdownItemId)) === undefined) {
+        throw new Error(`Cannot allocate to unknown work package "${breakdownItemId}"`);
+      }
+
+      const monthKey = formatYearMonth(month);
+      const onItem = await allocations.index('by-item').getAll(breakdownItemId);
+      const inCell = onItem.filter(
+        (allocation) =>
+          allocation.employeeId === employeeId && formatYearMonth(allocation.month) === monthKey,
+      );
+
+      // One record per cell. Anything else there is folded into it, with the
+      // value the user just typed, so no reading of the cell is ambiguous.
+      const [keep, ...duplicates] = inCell;
+
+      await Promise.all([
+        allocations.put({
+          id: keep?.id ?? newAllocationId(),
+          breakdownItemId,
+          employeeId,
+          month,
+          hours,
+          editedAt: Date.now(),
+        }),
+        ...duplicates.map((allocation) => allocations.delete(allocation.id)),
+      ]);
+
+      await tx.done;
+    },
+
     saveAllocation: async (allocation) => {
       const tx = db.transaction(['breakdownItems', 'allocations'], 'readwrite');
       const item = await tx.objectStore('breakdownItems').get(allocation.breakdownItemId);
@@ -169,4 +213,10 @@ export function createIndexedDbDeliveryStore(db: DeliveryDatabase): DeliveryStor
 
     removeAllocation: (allocationId) => db.delete('allocations', allocationId),
   };
+}
+
+function assertHours(hours: number): void {
+  if (!Number.isFinite(hours) || hours < 0) {
+    throw new Error(`A cell cannot hold ${String(hours)} hours`);
+  }
 }
