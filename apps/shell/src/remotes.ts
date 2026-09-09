@@ -8,6 +8,7 @@
 
 import {
   brokenRemotes,
+  type HostSession,
   readRuntimeConfig,
   REMOTE_NAMES,
   remoteEntryUrl,
@@ -16,9 +17,17 @@ import {
 import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
 import type { ComponentType } from 'react';
 
-/** What every remote is expected to expose under `./App`. */
+/**
+ * What every remote is expected to expose under `./App`.
+ *
+ * The props are optional on the remote's side - it runs standalone with nothing
+ * pushed in - which is why this is `Partial`-shaped rather than required here
+ * too. The host always passes them.
+ */
+export type RemoteApp = ComponentType<{ readonly session?: HostSession }>;
+
 export interface RemoteAppModule {
-  readonly App: ComponentType;
+  readonly App: RemoteApp;
 }
 
 export function registerConfiguredRemotes(): void {
@@ -40,7 +49,7 @@ export function registerConfiguredRemotes(): void {
  * the caller renders that as a dead panel rather than letting it take the shell
  * down.
  */
-export async function loadRemoteApp(remote: RemoteName): Promise<ComponentType> {
+export async function loadRemoteApp(remote: RemoteName): Promise<RemoteApp> {
   const loaded = await loadRemote<RemoteAppModule>(`${remote}/App`);
 
   if (!loaded || typeof loaded.App !== 'function') {

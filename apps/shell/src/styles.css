@@ -50,3 +50,29 @@
 .shell-main {
   min-height: 60vh;
 }
+
+/* The host-owned controls sit at the far end of the header, away from the
+   navigation: they apply to whichever panel is open, not to one of them. */
+.shell-session {
+  display: flex;
+  gap: var(--space-6);
+  margin-left: auto;
+  align-items: baseline;
+}
+
+.shell-session-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.shell-session-field label {
+  color: var(--colour-text-muted);
+}
+
+.shell-session-note {
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}

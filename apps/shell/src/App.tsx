@@ -5,9 +5,12 @@ import { REMOTE_NAMES, type RemoteName } from '@baseline/contracts';
 import { useState } from 'react';
 
 import { RemotePanel } from './remote-panel.tsx';
+import { SessionControls } from './session/session-controls.tsx';
+import { useSession } from './session/use-session.ts';
 
 export function App() {
   const [active, setActive] = useState<RemoteName>('people');
+  const { session, people, peopleUnavailable, setCurrency, setActiveUser } = useSession();
   /**
    * A remote is mounted on its first visit and then stays mounted, hidden
    * rather than unmounted.
@@ -47,6 +50,14 @@ export function App() {
             ))}
           </ul>
         </nav>
+
+        <SessionControls
+          session={session}
+          people={people}
+          peopleUnavailable={peopleUnavailable}
+          onCurrencyChange={setCurrency}
+          onUserChange={setActiveUser}
+        />
       </header>
       <main className="shell-main">
         {REMOTE_NAMES.filter((remote) => visited.has(remote)).map((remote) => (
@@ -54,7 +65,7 @@ export function App() {
           // accessibility tree, so a screen reader is not read two applications
           // at once.
           <div key={remote} hidden={remote !== active}>
-            <RemotePanel remote={remote} />
+            <RemotePanel remote={remote} session={session} />
           </div>
         ))}
       </main>

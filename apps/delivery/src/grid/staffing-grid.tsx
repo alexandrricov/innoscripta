@@ -1,3 +1,4 @@
+import { type DisplayCurrency, formatMoneyAmount, moneyToDisplay } from '@baseline/contracts';
 import {
   type CapacityLoad,
   displayDecimals,
@@ -9,6 +10,7 @@ import {
 } from '@baseline/domain';
 import { useState } from 'react';
 
+import { useHostSession } from '../session.tsx';
 import { AddPersonRow } from './add-person-row.tsx';
 import { GridCell } from './grid-cell.tsx';
 import { renderList } from './render-list.ts';
@@ -47,6 +49,12 @@ function monthLabel(month: { year: number; month: number }): string {
  * its own months, so rounding the months with largest-remainder distribution
  * lands them on the rounded total by construction.
  *
+ * Money is converted into the display currency before that distribution, not
+ * after. The guarantee is about the numbers on screen, and in a non-euro
+ * currency those are the converted ones; rounding euros and converting the
+ * rounded figures afterwards would leave the column not adding up in every
+ * currency but the stored one.
+ *
  * Only along the row. The column direction - a parent's month cell against the
  * sum of its children in that month - can still differ by one unit of the last
  * place, because no independent rounding satisfies both axes at once. Stated in
@@ -57,6 +65,7 @@ function displayed(
   values: UnitRowValues | undefined,
   unit: GridUnit,
   columns: number,
+  currency: DisplayCurrency,
 ): { readonly cells: readonly (number | null)[]; readonly total: number | null } {
   const nothing = Array.from({ length: columns }, () => null);
 
@@ -64,7 +73,8 @@ function displayed(
     return { cells: nothing, total: null };
   }
 
-  const months = values.byMonth.map((value) => value ?? 0);
+  const stored = values.byMonth.map((value) => value ?? 0);
+  const months = unit === 'cost' ? stored.map((value) => moneyToDisplay(value, currency)) : stored;
 
   // Cells and total are separate questions. % of capacity has cells and no
   // total - a percentage of one month cannot be added to a percentage of
@@ -81,7 +91,12 @@ function displayed(
 
 export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
   const { horizon, rows, values, employeeNames, capacity, peopleUnavailable } = data;
+  const { currency, user } = useHostSession();
   const [problem, setProblem] = useState<string | null>(null);
+
+  /** A value already in the display currency, written out. */
+  const show = (value: number): string =>
+    unit === 'cost' ? formatMoneyAmount(value, currency) : formatUnit(value, unit);
 
   const loadOf = (employeeId: string, column: number): CapacityLoad | undefined => {
     const month = horizon[column];
@@ -175,7 +190,8 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
                 : `assignment:${row.breakdownItemId}:${row.employeeId}`;
 
               const own = values.get(row);
-              const { cells, total } = displayed(own, unit, horizon.length);
+              const { cells, total } = displayed(own, unit, horizon.length, currency);
+              const isActiveUser = row.kind === 'assignment' && row.employeeId === user?.employeeId;
 
               return (
                 <tr key={key} className={derived ? 'delivery-grid-derived-row' : undefined}>
@@ -185,6 +201,11 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
                     style={{ paddingLeft: `${String(0.5 + depth * 1.1)}rem` }}
                   >
                     {label}
+                    {/* Whoever is signed in gets their own rows marked, so a
+                        plan of 165 rows can be read for "what am I on". Text,
+                        not colour: it has to survive a greyscale print and a
+                        screen reader. */}
+                    {isActiveUser && <span className="delivery-grid-you"> you</span>}
                     {derived && <span className="delivery-grid-derived-mark"> derived</span>}
                     {own?.hasUnpricedHours === true && (
                       <span
@@ -208,14 +229,20 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
                     if (row.kind !== 'assignment') {
                       return (
                         <td key={monthKey} className="delivery-grid-cell">
-                          {value === null || value === 0 ? '' : formatUnit(value, unit)}
+                          {value === null || value === 0 ? '' : show(value)}
                         </td>
                       );
                     }
 
                     return (
                       <GridCell
-                        key={monthKey}
+                        // Keyed by unit and currency as well as month, so
+                        // switching either one closes an open editor instead of
+                        // carrying the draft over. A "2767.57" typed as dollars
+                        // of cost and committed after a switch to hours would be
+                        // written as 2767.57 hours - the number keeps its digits
+                        // and loses its meaning.
+                        key={`${monthKey}:${unit}:${currency.code}`}
                         value={value}
                         unit={unit}
                         readOnlyBecause={readOnlyBecause(row.employeeId, column)}
@@ -235,7 +262,7 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
                   })}
 
                   <td className="delivery-grid-cell delivery-grid-total">
-                    {total === null || total === 0 ? '' : formatUnit(total, unit)}
+                    {total === null || total === 0 ? '' : show(total)}
                   </td>
                 </tr>
               );

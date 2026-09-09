@@ -400,3 +400,9 @@
   color: var(--colour-attention);
   font-size: var(--text-sm);
 }
+
+/* The signed-in person's own assignment rows. */
+.delivery-grid-you {
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}

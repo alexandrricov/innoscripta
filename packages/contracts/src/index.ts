@@ -9,6 +9,19 @@ export {
   pricingKey,
   type PricingSnapshot,
 } from './contracts.ts';
+export {
+  type ActiveUser,
+  CURRENCY_CODES,
+  type CurrencyCode,
+  DEFAULT_SESSION,
+  type DisplayCurrency,
+  formatMoney,
+  formatMoneyAmount,
+  type HostSession,
+  moneyToDisplay,
+  moneyToEur,
+  sessionFromHost,
+} from './host-session.ts';
 export { loadDeliveryContract, loadPeopleContract } from './load.ts';
 export {
   brokenRemotes,

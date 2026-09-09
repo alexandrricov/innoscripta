@@ -3,6 +3,7 @@ import { formatYearMonth, personMonthHours, yearMonth } from '@baseline/domain';
 import { OverCapacityNote } from '../capacity/over-capacity-note.tsx';
 import type { OverloadedMonth } from '../capacity/use-oversubscription.ts';
 import type { Employee } from '../data/people-store.ts';
+import { useHostSession } from '../session.tsx';
 import { AddRateForm } from './add-rate-form.tsx';
 import { RateRow, rateRowKey } from './rate-row.tsx';
 import { useRateHistory } from './use-rate-history.ts';
@@ -25,6 +26,7 @@ export function EmployeeDetail({
   capacityUnavailable,
 }: EmployeeDetailProps) {
   const { state, save, remove } = useRateHistory(employee.id);
+  const { currency } = useHostSession();
   const month = currentMonth();
 
   return (
@@ -50,11 +52,25 @@ export function EmployeeDetail({
 
       <OverCapacityNote months={overloadedMonths} unavailable={capacityUnavailable} />
 
-      <h4 className="people-detail-subheading">Cost-rate history</h4>
+      <h4 className="people-detail-subheading">Cost-rate history (EUR)</h4>
       <p className="people-detail-hint">
         A rate applies from its date until the next one begins. Dates in the past are allowed;
         correcting history is the point.
       </p>
+      {/*
+        The host's display currency deliberately stops here. A rate is data
+        somebody negotiated and typed, not a figure derived for the eye, so
+        converting it on the way in and back out again would make what is stored
+        depend on which currency happened to be selected - and an exchange rate
+        that moves would then rewrite history. Derived money in Delivery converts;
+        rates do not.
+      */}
+      {currency.code !== 'EUR' && (
+        <p className="people-detail-hint">
+          Rates are entered and stored in EUR whatever the display currency. {currency.code} applies
+          to figures derived from them.
+        </p>
+      )}
 
       {state.status === 'loading' && (
         <p className="people-notice" aria-busy="true">

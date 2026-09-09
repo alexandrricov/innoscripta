@@ -4,6 +4,8 @@ import type { Employee } from '../data/people-store.ts';
 interface EmployeeListProps {
   readonly employees: readonly Employee[];
   readonly selectedId: string | undefined;
+  /** Whoever the host says is signed in, when they are in the register. */
+  readonly activeUserId: string | undefined;
   readonly oversubscription: Oversubscription;
   readonly onSelect: (employeeId: string) => void;
 }
@@ -11,6 +13,7 @@ interface EmployeeListProps {
 export function EmployeeList({
   employees,
   selectedId,
+  activeUserId,
   oversubscription,
   onSelect,
 }: EmployeeListProps) {
@@ -35,7 +38,13 @@ export function EmployeeList({
               onSelect(employee.id);
             }}
           >
-            <span className="people-register-name">{employee.name}</span>
+            <span className="people-register-name">
+              {employee.name}
+              {/* A word, not a colour: the same reason as the badge below. */}
+              {employee.id === activeUserId && (
+                <span className="people-register-you"> &middot; you</span>
+              )}
+            </span>
             <span className="people-register-role">{employee.role}</span>
             <span className="people-register-hours">
               {employee.weeklyHours}

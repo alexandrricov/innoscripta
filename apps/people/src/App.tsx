@@ -4,6 +4,7 @@
 import '@baseline/theme/theme.css';
 import './styles.css';
 
+import { type HostSession, sessionFromHost } from '@baseline/contracts';
 import { useMemo, useState } from 'react';
 
 import { type OverloadedMonth, useOversubscription } from './capacity/use-oversubscription.ts';
@@ -12,14 +13,36 @@ import { EmployeeDetail } from './employee/employee-detail.tsx';
 import { EmployeeList } from './register/employee-list.tsx';
 import { matchEmployees } from './register/search.ts';
 import { useEmployees } from './register/use-employees.ts';
+import { SessionProvider, useHostSession } from './session.tsx';
 
 // A stable empty list, so the memoised filter is not invalidated by a fresh []
 // on every render while the register is still loading.
 const NO_EMPLOYEES: readonly Employee[] = [];
 const NO_MONTHS: readonly OverloadedMonth[] = [];
 
-export function App() {
+interface AppProps {
+  /**
+   * The display currency and the active user, owned by the host.
+   *
+   * Optional because this remote also runs on its own port with nobody pushing
+   * anything in. `sessionFromHost` supplies the standalone default and checks
+   * what a host did push - it arrives across a deployment boundary, so it is
+   * input rather than a fact.
+   */
+  readonly session?: HostSession;
+}
+
+export function App({ session }: AppProps) {
+  return (
+    <SessionProvider session={sessionFromHost(session)}>
+      <People />
+    </SessionProvider>
+  );
+}
+
+function People() {
   const state = useEmployees();
+  const { user } = useHostSession();
   const [query, setQuery] = useState('');
   /**
    * Which employee is open is component state, not a URL.
@@ -80,6 +103,9 @@ export function App() {
             <EmployeeList
               employees={matches}
               selectedId={selectedId}
+              // Whoever is signed in is marked in the register, so "find me"
+              // does not mean scrolling sixty rows looking for your own name.
+              activeUserId={user?.employeeId}
               oversubscription={oversubscription}
               onSelect={setSelectedId}
             />

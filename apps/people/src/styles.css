@@ -328,3 +328,9 @@
 .people-capacity-unavailable {
   margin-bottom: var(--space-4);
 }
+
+/* Whoever is signed in, marked in the register. Muted: it labels a row, it does
+   not compete with the name. */
+.people-register-you {
+  color: var(--colour-text-muted);
+}

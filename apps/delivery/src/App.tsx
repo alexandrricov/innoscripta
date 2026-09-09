@@ -4,6 +4,7 @@
 import '@baseline/theme/theme.css';
 import './styles.css';
 
+import { type HostSession, sessionFromHost } from '@baseline/contracts';
 import type { GridUnit } from '@baseline/domain';
 import { useState } from 'react';
 
@@ -14,6 +15,7 @@ import { useBreakdown } from './breakdown/use-breakdown.ts';
 import { StaffingGrid } from './grid/staffing-grid.tsx';
 import { UnitSwitcher } from './grid/unit-switcher.tsx';
 import { useGrid } from './grid/use-grid.ts';
+import { SessionProvider, useHostSession } from './session.tsx';
 
 /**
  * The grid's row headers are the breakdown tree, so showing both at once would
@@ -30,7 +32,26 @@ const VIEW_LABELS: Record<View, string> = {
 const EVERY_UNIT_AVAILABLE: ReadonlySet<GridUnit> = new Set();
 const UNITS_NEEDING_PEOPLE: ReadonlySet<GridUnit> = new Set(['personMonths', 'percent', 'cost']);
 
-export function App() {
+interface AppProps {
+  /**
+   * The display currency and the active user, owned by the host.
+   *
+   * Optional because this remote also runs on its own port, where nobody pushes
+   * anything in. `sessionFromHost` supplies the standalone default and checks
+   * what a host did push - it crosses a deployment boundary, so it is input.
+   */
+  readonly session?: HostSession;
+}
+
+export function App({ session }: AppProps) {
+  return (
+    <SessionProvider session={sessionFromHost(session)}>
+      <Delivery />
+    </SessionProvider>
+  );
+}
+
+function Delivery() {
   /**
    * Which project is open, and which view, are component state rather than a
    * URL: the shell owns navigation, and the panel behaves the same hosted as
@@ -41,8 +62,13 @@ export function App() {
   // Person-months is the default the specification's own figure shows.
   const [unit, setUnit] = useState<GridUnit>('personMonths');
 
+  // Money is stored in euros and shown in whichever currency the host picked, so
+  // the currency has to reach the edit path too: a cost typed in dollars becomes
+  // euros before it becomes hours.
+  const { currency } = useHostSession();
+
   const breakdown = useBreakdown(projectId);
-  const grid = useGrid(projectId, unit);
+  const grid = useGrid(projectId, unit, currency);
 
   // Falling back rather than showing a grid of blanks: without People the only
   // unit that means anything is hours.

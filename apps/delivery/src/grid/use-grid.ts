@@ -11,7 +11,13 @@
  * nothing from anybody, which is exactly why they are the stored one.
  */
 
-import { loadPeopleContract, type MonthPricing, pricingKey } from '@baseline/contracts';
+import {
+  type DisplayCurrency,
+  loadPeopleContract,
+  moneyToEur,
+  type MonthPricing,
+  pricingKey,
+} from '@baseline/contracts';
 import {
   type Allocation,
   type AssignmentBasis,
@@ -77,7 +83,18 @@ export type GridState =
   | ({ readonly status: 'ready' } & GridData)
   | { readonly status: 'failed'; readonly message: string };
 
-export function useGrid(projectId: string | undefined, unit: GridUnit): GridState & GridActions {
+/**
+ * `currency` is needed only on the write path, and only for cost.
+ *
+ * Reading is the display side's problem: the roll-up produces euros and the
+ * table converts them just before rounding them for the screen. Writing is this
+ * side's, because what the user typed has to become stored hours here.
+ */
+export function useGrid(
+  projectId: string | undefined,
+  unit: GridUnit,
+  currency: DisplayCurrency,
+): GridState & GridActions {
   const [state, setState] = useState<GridState>({ status: 'loading' });
   // Bumped by the store's own change notifications, the same ones the published
   // contract forwards to People, and by People's when a rate changes. An edit on
@@ -155,10 +172,15 @@ export function useGrid(projectId: string | undefined, unit: GridUnit): GridStat
       }
 
       try {
+        // A cost was typed in the host's display currency, and the rates behind
+        // `fromUnit` are in euros. Undo the display conversion first, so what is
+        // divided by the blended rate is the same currency the rate is in.
+        const inStoredCurrency = unit === 'cost' ? moneyToEur(value, currency) : value;
+
         const hours =
           unit === 'hours'
-            ? value
-            : fromUnit(value, unit, requireBasis(state.basisOf, employeeId, month));
+            ? inStoredCurrency
+            : fromUnit(inStoredCurrency, unit, requireBasis(state.basisOf, employeeId, month));
 
         const store = await deliveryStore();
         await store.setCellHours(breakdownItemId, employeeId, month, hours);
@@ -167,7 +189,7 @@ export function useGrid(projectId: string | undefined, unit: GridUnit): GridStat
         return messageOf(error);
       }
     },
-    [state, unit],
+    [state, unit, currency],
   );
 
   const addPerson = useCallback(

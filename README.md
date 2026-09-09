@@ -19,14 +19,14 @@ do not belong to one application.
 
 ## Status
 
-Everything in the scope works except the Docker packaging and two things the
-shell owns: the display currency and the active user. See
+Everything in the scope works except the Docker packaging. See
 [what is not built yet](#what-is-not-built-yet) at the end - nothing in this
 README describes something that does not run.
 
 What is here: the domain, both remote UIs, persistence that survives a reload,
-the contracts the two remotes publish to each other, and failure isolation with
-a way to trigger it.
+the contracts the two remotes publish to each other, the host-owned display
+currency and active user pushed into both remotes at runtime, and failure
+isolation with a way to trigger it.
 
 ## Running it
 
@@ -400,6 +400,90 @@ seed file is 0.65 person-months, but six person-months are over capacity once th
 other projects are counted. A check inside one project finds nothing and looks
 like it works.
 
+### The shell owns the currency and the active user, and pushes them in
+
+Both belong to the host by the exercise's own description, and both are things a
+remote must not decide for itself: two panels on one page showing money in two
+currencies would be a bug, and "who is signed in" has one answer for the whole
+suite.
+
+They arrive as a prop on the exposed `./App`, not through a shared module or a
+global:
+
+- A remote also runs standalone, where a prop has an obvious default
+  (`DEFAULT_SESSION` - euros at par, nobody signed in) and a global would simply
+  be absent.
+- A React context created in the shell and read in a remote would depend on both
+  sides resolving the same module instance. Federation shares one React, but that
+  is a build-time coincidence to rest a feature on.
+- A prop re-renders. A mutable global would need its own change notification, and
+  props already have one.
+
+Each remote turns the prop into its own context at its own root, so the value is
+threaded once and read where it is used - a grid cell reads the currency itself
+rather than having it passed down through two components two thousand times.
+
+`sessionFromHost` treats the prop as input rather than fact, the same way
+`readRuntimeConfig` treats the injected config. A remote is deployed separately
+from its host, so an older shell may push nothing and a newer one may push a
+currency this build has never heard of. Neither is worth blanking a panel over:
+fall back to euros, warn once, render.
+
+The active user is a person from the register, and the register belongs to People
+
+- so the shell asks the People contract, over the same runtime seam the remotes
+  use on each other. There is no authentication and none is scored; the picker
+  stands in for what an identity provider would supply. With People unreachable the
+  picker is empty and says why, and both remotes receive `user: null`, which is
+  exactly what they see standalone. The shell holds only the id and derives the
+  name from the register, so a rename in People reaches the header through the same
+  subscription and a person removed from the register signs out on their own.
+
+Where the user shows up: their own rows are marked in both apps, with the word
+"you" rather than a colour. A plan of 165 rows and a register of sixty are both
+long enough that "what am I on" is a real question.
+
+### Money converts for display; rates do not
+
+The stored data is in euros - rate records carry an hourly cost with no currency
+on them - so the display currency is a conversion applied on the way to the
+screen, and undone on the way back from an edit. The rate travels with the code
+across the boundary (`{ code, perEur }`), because a remote handed only `'USD'`
+would have to find a rate somewhere, and then two remotes could disagree about
+what a dollar is.
+
+The rates themselves are a fixed table in the shell, stated as of a date and
+labelled indicative in the header. A live feed means a provider, a key, a refresh
+policy and a stale-value story, none of which is scored. The seam is the shape:
+replace the table with a fetch and nothing downstream changes.
+
+Two details that are not cosmetic:
+
+- **Conversion happens before the rounding, not after.** R3 says the displayed
+  cells have to add up to the displayed total, and in a non-euro currency the
+  displayed numbers are the converted ones. Rounding euros and converting the
+  rounded figures afterwards leaves the column not adding up in every currency
+  but the stored one. Checked in the browser: the twelve month cells of a row in
+  USD add to the row total exactly.
+- **`Intl.NumberFormat` with `style: 'currency'` is wrong here.** It uses each
+  currency's own minor units, so some currencies would print three decimals and
+  some none - breaking both R2's fixed 2dp for cost and the alignment of the
+  grid. The symbol comes from a small table and the digits from `toFixed(2)`.
+
+Rates in People stay in euros whatever the host selected, and the panel says so
+when the display currency is not EUR. A rate is data somebody negotiated and
+typed, not a figure derived for the eye. Converting it in and back out would make
+what is stored depend on which currency happened to be selected, and an exchange
+rate that moved would rewrite history. Derived money converts; entered rates do
+not.
+
+A bug this turned up, worth keeping in mind: with a cell mid-edit, switching the
+unit or the currency used to carry the draft over, so "2767.57" typed as dollars
+of cost and committed after a switch to hours was written as 2767.57 hours - the
+digits survive and the meaning does not. The cell is now keyed by month, unit and
+currency, so switching either closes the editor and drops the draft. A commit
+only ever happens in the unit it was typed in.
+
 ### How the two remotes talk
 
 The dependency runs both ways, which is easy to miss:
@@ -510,11 +594,11 @@ compiler.
 - **Docker.** No `Dockerfile` and no `compose.yaml`, so the one-command
   `docker compose up` on port 8080 does not exist yet. `public/config.js` is
   already the seam it will be generated into.
-- **The display currency and the active user.** The shell owns both and should
-  push them into the remotes at runtime. The remotes render EUR and no user
-  today.
 - **Two-dimensional reconciliation in the grid.** Rows are exact, columns can be
   one last place out. The reasoning is above; the algorithm is not here.
 - **Cross-tab updates.** In-page subscriptions only, no `BroadcastChannel`.
 - **Arrow-key grid navigation.** Tab and Enter work; a roving tabindex does not
   exist.
+- **Live exchange rates and real authentication.** The shell's currency table is
+  fixed and dated, and the active user is picked from the register rather than
+  supplied by an identity provider. Both are stubs with the right shape.

@@ -1,5 +1,8 @@
+import { formatMoneyAmount } from '@baseline/contracts';
 import { type CapacityLoad, formatUnit, type GridUnit } from '@baseline/domain';
 import { useState } from 'react';
+
+import { useHostSession } from '../session.tsx';
 
 interface GridCellProps {
   readonly value: number | null;
@@ -12,9 +15,21 @@ interface GridCellProps {
 }
 
 export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridCellProps) {
+  // Read here rather than passed down: two thousand cells would each carry the
+  // same prop through the same two components to reach the same value.
+  const { currency } = useHostSession();
   const [draft, setDraft] = useState<string | null>(null);
 
-  const shown = value === null || value === 0 ? '' : formatUnit(value, unit);
+  // `value` already arrives in the display currency - the row was converted
+  // before it was rounded - so this only writes it out. What the user types goes
+  // back the other way in `useGrid`.
+  //
+  // Two strings, not one. `shown` carries the currency symbol; `typable` is the
+  // digits that go into a `type="number"` input, which would reject "$8510.40"
+  // and silently blank itself.
+  const typable = value === null || value === 0 ? '' : formatUnit(value, unit);
+  const shown =
+    typable !== '' && unit === 'cost' ? formatMoneyAmount(value ?? 0, currency) : typable;
   const over = load?.isOversubscribed === true;
 
   const flag = over && shown !== '' && (
@@ -55,7 +70,7 @@ export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridC
           type="button"
           className="delivery-grid-edit"
           onClick={() => {
-            setDraft(shown);
+            setDraft(typable);
           }}
         >
           {shown === '' ? <span className="bl-visually-hidden">empty, edit</span> : shown}
@@ -84,7 +99,7 @@ export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridC
         min="0"
         step="any"
         inputMode="decimal"
-        aria-label={`Value in ${unit}`}
+        aria-label={unit === 'cost' ? `Value in ${currency.code}` : `Value in ${unit}`}
         value={draft}
         onChange={(event) => {
           setDraft(event.target.value);

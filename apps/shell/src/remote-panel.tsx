@@ -8,21 +8,26 @@
  * thrown while the remote renders.
  */
 
-import type { RemoteName } from '@baseline/contracts';
+import type { HostSession, RemoteName } from '@baseline/contracts';
 import { Component, type ErrorInfo, lazy, type ReactNode, Suspense } from 'react';
 
-import { loadRemoteApp } from './remotes.ts';
+import { loadRemoteApp, type RemoteApp } from './remotes.ts';
 
 interface RemotePanelProps {
   readonly remote: RemoteName;
+  /** The host-owned values, pushed into the remote on every render. */
+  readonly session: HostSession;
 }
 
-const REMOTE_APPS: Record<RemoteName, ReturnType<typeof lazy>> = {
+// Created once at module scope, not per render: a fresh `lazy` component on
+// every render is a fresh component type, which would remount the remote and
+// throw away its state on every keystroke anywhere in the shell.
+const REMOTE_APPS: Record<RemoteName, RemoteApp> = {
   people: lazy(async () => ({ default: await loadRemoteApp('people') })),
   delivery: lazy(async () => ({ default: await loadRemoteApp('delivery') })),
 };
 
-export function RemotePanel({ remote }: RemotePanelProps) {
+export function RemotePanel({ remote, session }: RemotePanelProps) {
   const RemoteApp = REMOTE_APPS[remote];
 
   return (
@@ -31,7 +36,7 @@ export function RemotePanel({ remote }: RemotePanelProps) {
     // the panel of every other remote - the opposite of isolation.
     <RemoteErrorBoundary key={remote} remote={remote}>
       <Suspense fallback={<p aria-busy="true">Loading {remote}...</p>}>
-        <RemoteApp />
+        <RemoteApp session={session} />
       </Suspense>
     </RemoteErrorBoundary>
   );
