@@ -19,16 +19,36 @@ do not belong to one application.
 
 ## Status
 
-Everything in the scope works except the Docker packaging. See
+Everything in the scope works. See
 [what is not built yet](#what-is-not-built-yet) at the end - nothing in this
 README describes something that does not run.
 
 What is here: the domain, both remote UIs, persistence that survives a reload,
 the contracts the two remotes publish to each other, the host-owned display
-currency and active user pushed into both remotes at runtime, and failure
-isolation with a way to trigger it.
+currency and active user pushed into both remotes at runtime, failure isolation
+with a way to trigger it, and `docker compose up` serving the suite on port 8080.
 
 ## Running it
+
+One command from a clean clone, with nothing but Docker on the machine:
+
+```sh
+docker compose up
+```
+
+Then open http://localhost:8080. The remotes are published too, because it is
+the browser that fetches them:
+
+| App      | URL                   |
+| -------- | --------------------- |
+| shell    | http://localhost:8080 |
+| people   | http://localhost:8081 |
+| delivery | http://localhost:8082 |
+
+To point the suite at real hostnames, set `PEOPLE_URL` and `DELIVERY_URL` - the
+same images, no rebuild. See [how the images work](#how-the-images-work).
+
+### Without Docker
 
 Node 24 and pnpm 11.
 
@@ -540,6 +560,41 @@ entry runs synchronously, so an entry that imports React fails with
 `loadShareSync failed`. All three apps have this boundary, remotes included,
 because a remote's standalone entry consumes the shared React too.
 
+### How the images work
+
+One `Dockerfile` builds all three apps from the workspace and then splits into
+three images, selected with an `APP` build argument. The install and build layers
+are shared, so `docker compose build` resolves the workspace once rather than
+three times. The final stage is `nginx:alpine` with a static bundle in it -
+there is no Node in the running image and none on the host.
+
+Three services, not one, because three teams deploy three artifacts. The remotes
+are published on their own ports (8081, 8082) because it is **the browser** that
+fetches `remoteEntry.js`, not the shell's container: an address that only
+resolves inside the compose network would work for server-to-server traffic and
+fail here.
+
+`config.js` is generated at container start by a script in
+`/docker-entrypoint.d`, which the nginx image runs before starting the server -
+so no `ENTRYPOINT` of our own, and the image keeps its own signal handling. The
+script reads `PEOPLE_URL` and `DELIVERY_URL` and refuses to start without them,
+because a missing address is a deployment mistake, not a runtime condition to
+recover from. That file is what makes the same three images run in any
+environment, and it is why no URL appears in any bundle.
+
+Two nginx details that are not decoration:
+
+- **CORS on the remotes.** A hosted remote's assets are fetched by a page served
+  from the shell's origin. Scripts would load cross-origin without a header, but
+  `fetch` would not - and each remote fetches the seed fixture on first run, so
+  the first hosted run would fail to seed itself. Wide open here on purpose:
+  everything served is a public static bundle, and which shells may host a remote
+  is not a decision a static file server can make.
+- **`remoteEntry.js` is never cached.** Its name is stable and its content
+  changes with every deploy of that remote, so caching it would pin a host to a
+  remote's previous build. Hashed chunks get a year; `index.html` and `config.js`
+  get `no-store`.
+
 ### Standalone and hosted from one build
 
 Each remote produces two things from a single `rspack build`: `main.js` with an
@@ -591,9 +646,6 @@ compiler.
 
 ## What is not built yet
 
-- **Docker.** No `Dockerfile` and no `compose.yaml`, so the one-command
-  `docker compose up` on port 8080 does not exist yet. `public/config.js` is
-  already the seam it will be generated into.
 - **Two-dimensional reconciliation in the grid.** Rows are exact, columns can be
   one last place out. The reasoning is above; the algorithm is not here.
 - **Cross-tab updates.** In-page subscriptions only, no `BroadcastChannel`.

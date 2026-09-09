@@ -1,0 +1,9 @@
+# Everything here would either be rebuilt inside the image or has no business
+# in it. Keeping the context small also keeps the install layer cacheable.
+node_modules
+**/node_modules
+**/dist
+.git
+.claude
+*.log
+.DS_Store

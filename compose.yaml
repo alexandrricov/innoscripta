@@ -1,0 +1,53 @@
+# One command from a clean clone: `docker compose up`, then http://localhost:8080.
+#
+# Three services, because three teams deploy three artifacts. The shell is the
+# one you open; the remotes are published on their own ports because that is how
+# they are reached - by the browser, not by the shell's container. A URL that
+# only resolves inside the compose network (`http://people`) would work for
+# server-to-server traffic and fail here, since it is the page in the browser
+# that fetches `remoteEntry.js`.
+#
+# The URLs are environment variables with local defaults, so the same images run
+# behind real hostnames by setting PEOPLE_URL and DELIVERY_URL.
+
+services:
+  shell:
+    build:
+      context: .
+      args:
+        APP: shell
+    ports:
+      - '8080:80'
+    environment:
+      PEOPLE_URL: ${PEOPLE_URL:-http://localhost:8081}
+      DELIVERY_URL: ${DELIVERY_URL:-http://localhost:8082}
+    # Only so `up` starts them in a readable order. The shell does not need the
+    # remotes to be up: a remote that is unreachable is reported in place of its
+    # panel, which is the failure isolation the exercise asks for.
+    depends_on:
+      - people
+      - delivery
+
+  people:
+    build:
+      context: .
+      args:
+        APP: people
+    ports:
+      - '8081:80'
+    # A remote needs the same configuration as the host: it runs standalone on
+    # its own port, and it resolves its neighbour's contract at runtime.
+    environment:
+      PEOPLE_URL: ${PEOPLE_URL:-http://localhost:8081}
+      DELIVERY_URL: ${DELIVERY_URL:-http://localhost:8082}
+
+  delivery:
+    build:
+      context: .
+      args:
+        APP: delivery
+    ports:
+      - '8082:80'
+    environment:
+      PEOPLE_URL: ${PEOPLE_URL:-http://localhost:8081}
+      DELIVERY_URL: ${DELIVERY_URL:-http://localhost:8082}
