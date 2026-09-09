@@ -96,6 +96,9 @@ importers:
       '@module-federation/enhanced':
         specifier: 2.9.0
         version: 2.9.0(@rspack/core@2.2.2(@module-federation/runtime-tools@2.9.0))(typescript@6.0.3)
+      idb:
+        specifier: 8.0.3
+        version: 8.0.3
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -127,12 +130,18 @@ importers:
       cross-env:
         specifier: ^10.0.0
         version: 10.1.0
+      fake-indexeddb:
+        specifier: 6.2.5
+        version: 6.2.5
       react-refresh:
         specifier: ^0.17.0
         version: 0.17.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      vitest:
+        specifier: 5.0.0
+        version: 5.0.0(@types/node@26.5.0)(vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2))
 
   apps/shell:
     dependencies:
@@ -975,6 +984,10 @@ packages:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
 
+  fake-indexeddb@6.2.5:
+    resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
+    engines: {node: '>=18'}
+
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -1041,6 +1054,9 @@ packages:
 
   hookified@2.2.0:
     resolution: {integrity: sha512-p/LgFzRN5FeoD3DLS6bkUapeye6E4SI6yJs6KetENd18S+FBthqYq2amJUWpt5z0EQwwHemidjY5OqJGEKm5uA==}
+
+  idb@8.0.3:
+    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
 
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
@@ -2288,6 +2304,8 @@ snapshots:
 
   expect-type@1.4.0: {}
 
+  fake-indexeddb@6.2.5: {}
+
   fast-deep-equal@3.1.3: {}
 
   fast-json-stable-stringify@2.1.0: {}
@@ -2341,6 +2359,8 @@ snapshots:
   hookified@1.15.1: {}
 
   hookified@2.2.0: {}
+
+  idb@8.0.3: {}
 
   ignore@5.3.2: {}
 
