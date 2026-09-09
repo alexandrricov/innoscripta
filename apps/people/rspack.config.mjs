@@ -44,6 +44,10 @@ export default {
   },
   module: {
     rules: [
+      // Rspack 2 needs CSS turned on explicitly with a rule; there is no
+      // experiments flag any more. `css/auto` picks module vs global by file
+      // name, and nothing here uses CSS modules.
+      { test: /\.css$/, type: 'css/auto' },
       {
         test: /\.tsx?$/,
         exclude: /node_modules/,
