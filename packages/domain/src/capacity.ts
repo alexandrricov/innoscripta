@@ -20,7 +20,6 @@
 
 import type { Allocation } from './breakdown.ts';
 import { formatYearMonth, type YearMonth } from './calendar.ts';
-import { personMonthHours } from './person-month.ts';
 
 export interface CapacityLoad {
   /** Hours allocated to this person in this month, across every project. */
@@ -43,18 +42,30 @@ interface Bucket {
 }
 
 /**
+ * How many hours a person-month is, or nothing when that cannot be known.
+ *
+ * A lookup rather than the contracted weekly hours, because this asks only for
+ * what it uses. The two callers get the number from different places: the app
+ * that owns contracts computes it, and the app that owns the plan is told it
+ * across a published contract. Neither has to hand over more than the answer.
+ */
+export type CapacityHoursOf = (employeeId: string, month: YearMonth) => number | undefined;
+
+/**
  * The load and capacity of every person-month that carries an allocation.
  *
- * `weeklyHoursByEmployee` must cover every employee mentioned; capacity cannot
- * be guessed from an absent contract, and treating it as zero would report
- * everybody as oversubscribed.
+ * A person-month whose capacity cannot be looked up is left out of the result
+ * rather than guessed at. Treating an unknown capacity as zero would report
+ * everybody as oversubscribed, and treating it as infinite would report nobody;
+ * saying nothing is the honest answer, and it is what a caller whose rate owner
+ * is unreachable should show.
  *
- * Person-months with no allocation are absent from the result rather than
- * present with zeros - there is nothing to say about them.
+ * Person-months with no allocation are absent too - there is nothing to say
+ * about them.
  */
 export function capacityLoad(
   allocations: readonly Allocation[],
-  weeklyHoursByEmployee: ReadonlyMap<string, number>,
+  capacityHoursOf: CapacityHoursOf,
 ): ReadonlyMap<string, ReadonlyMap<string, CapacityLoad>> {
   const buckets = new Map<string, Map<string, Bucket>>();
 
@@ -82,16 +93,14 @@ export function capacityLoad(
   const load = new Map<string, ReadonlyMap<string, CapacityLoad>>();
 
   for (const [employeeId, monthsOfEmployee] of buckets) {
-    const weeklyHours = weeklyHoursByEmployee.get(employeeId);
-    if (weeklyHours === undefined) {
-      throw new RangeError(
-        `No contracted weekly hours for employee "${employeeId}", so capacity cannot be computed`,
-      );
-    }
-
     const months = new Map<string, CapacityLoad>();
+
     for (const [monthKey, bucket] of monthsOfEmployee) {
-      const capacityHours = personMonthHours(weeklyHours, bucket.month);
+      const capacityHours = capacityHoursOf(employeeId, bucket.month);
+      if (capacityHours === undefined) {
+        continue;
+      }
+
       // Strictly greater: the spec says the sum has to exceed capacity, and
       // exactly 100% is exactly one person-month, which is fine.
       const isOversubscribed = bucket.hours > capacityHours;
@@ -103,7 +112,10 @@ export function capacityLoad(
         causingAllocationId: isOversubscribed ? bucket.latest?.id : undefined,
       });
     }
-    load.set(employeeId, months);
+
+    if (months.size > 0) {
+      load.set(employeeId, months);
+    }
   }
 
   return load;

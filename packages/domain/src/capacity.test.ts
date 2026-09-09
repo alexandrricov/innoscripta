@@ -8,7 +8,15 @@ import { personMonthHours } from './person-month.ts';
 const MARCH_2026 = yearMonth(2026, 3);
 const JUNE_2026 = yearMonth(2026, 6);
 
-const FULL_TIME = new Map([['okafor', 40]]);
+/** A capacity lookup built the way the contract owner would build it. */
+function capacityFrom(weeklyHoursByEmployee: ReadonlyMap<string, number>) {
+  return (employeeId: string, month: YearMonth) => {
+    const weeklyHours = weeklyHoursByEmployee.get(employeeId);
+    return weeklyHours === undefined ? undefined : personMonthHours(weeklyHours, month);
+  };
+}
+
+const FULL_TIME = capacityFrom(new Map([['okafor', 40]]));
 
 function allocation(
   id: string,
@@ -94,12 +102,12 @@ describe('capacity depends on the contract and on the month', () => {
     const allocations = [allocation('a1', 'okafor', MARCH_2026, 100)];
 
     expect(
-      capacityLoad(allocations, new Map([['okafor', 40]]))
+      capacityLoad(allocations, capacityFrom(new Map([['okafor', 40]])))
         .get('okafor')
         ?.get('2026-03'),
     ).toMatchObject({ capacityHours: 176, isOversubscribed: false });
     expect(
-      capacityLoad(allocations, new Map([['okafor', 20]]))
+      capacityLoad(allocations, capacityFrom(new Map([['okafor', 20]])))
         .get('okafor')
         ?.get('2026-03'),
     ).toMatchObject({ capacityHours: 88, isOversubscribed: true });
@@ -186,10 +194,14 @@ describe('what it leaves out and what it refuses', () => {
     expect(load.has('brandt')).toBe(false);
   });
 
-  it('refuses an employee with no contracted hours rather than assuming any', () => {
-    expect(() => capacityLoad([allocation('a1', 'ghost', MARCH_2026, 10)], FULL_TIME)).toThrow(
-      RangeError,
-    );
+  it('says nothing about a person whose capacity cannot be looked up', () => {
+    // Guessing would be worse either way: zero reports everybody as
+    // oversubscribed, infinity reports nobody. This is also what a caller whose
+    // rate owner is unreachable should end up showing.
+    const load = capacityLoad([allocation('a1', 'ghost', MARCH_2026, 10)], FULL_TIME);
+
+    expect(load.has('ghost')).toBe(false);
+    expect(load.size).toBe(0);
   });
 
   it('refuses hours or an edit stamp that cannot exist', () => {

@@ -27,11 +27,16 @@ export {
   type YearMonth,
   yearMonth,
 } from './calendar.ts';
-export { type CapacityLoad, capacityLoad } from './capacity.ts';
-export { type CostOfHours, type CostTotals, type HoursCost, rollUpCost } from './cost-roll-up.ts';
+export { type CapacityHoursOf, type CapacityLoad, capacityLoad } from './capacity.ts';
 export { hoursPerWorkingDay, personMonthHours } from './person-month.ts';
 export { type RateRecord, type RateSlice, splitMonthByRates } from './rate-schedule.ts';
 export { distributeRounded, type RoundedBreakdown } from './rounding.ts';
+export {
+  type AssignmentBasis,
+  type BasisLookup,
+  rollUpInUnit,
+  type UnitRowValues,
+} from './unit-roll-up.ts';
 export {
   displayDecimals,
   formatUnit,
