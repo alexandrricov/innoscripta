@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@baseline/domain": "workspace:*",
+    "@baseline/seed": "workspace:*",
+    "@baseline/theme": "workspace:*",
     "@module-federation/enhanced": "2.9.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"

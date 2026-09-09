@@ -1,0 +1,92 @@
+/*
+ * Shared design tokens.
+ *
+ * Three applications render into one page, so they have to agree on colour,
+ * spacing and type. Declared once here rather than three times, for the same
+ * reason the federation `shared` block lives in one package: three copies drift
+ * apart on the first edit.
+ *
+ * Every app imports this file, so these rules land on the page more than once.
+ * They are idempotent - the same declarations with the same values - so the cost
+ * is a few duplicated bytes. The alternative, letting only the shell import it,
+ * would leave a remote unstyled when it runs standalone, and running standalone
+ * is its own requirement.
+ *
+ * Only tokens and a minimal baseline live here. Anything specific to one app
+ * belongs in that app's stylesheet, under its own class prefix.
+ */
+
+:root {
+  --colour-surface: #ffffff;
+  --colour-surface-sunken: #f6f7f8;
+  --colour-surface-raised: #ffffff;
+
+  --colour-text: #1b1f24;
+  --colour-text-muted: #5c6773;
+
+  --colour-border: #d8dde3;
+  --colour-border-strong: #b3bcc6;
+
+  --colour-accent: #1f5f8b;
+  --colour-accent-text: #ffffff;
+
+  /* Reserved for the over-capacity flag and for unpriced cells. */
+  --colour-attention: #a5480c;
+  --colour-attention-surface: #fdf1e7;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius: 6px;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', roboto, helvetica, arial, sans-serif;
+  --font-mono: ui-monospace, sfmono-regular, menlo, consolas, monospace;
+
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--colour-surface-sunken);
+  color: var(--colour-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Visible only to assistive technology. */
+.bl-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--colour-accent);
+  outline-offset: 2px;
+}

@@ -87,6 +87,12 @@ importers:
       '@baseline/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@baseline/seed':
+        specifier: workspace:*
+        version: link:../../packages/seed
+      '@baseline/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@module-federation/enhanced':
         specifier: 2.9.0
         version: 2.9.0(@rspack/core@2.2.2(@module-federation/runtime-tools@2.9.0))(typescript@6.0.3)
@@ -133,6 +139,9 @@ importers:
       '@baseline/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@baseline/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@module-federation/enhanced':
         specifier: 2.9.0
         version: 2.9.0(@rspack/core@2.2.2(@module-federation/runtime-tools@2.9.0))(typescript@6.0.3)
@@ -181,9 +190,23 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 5.0.0
-        version: 5.0.0(vite@8.2.2(jiti@2.4.2))
+        version: 5.0.0(@types/node@26.5.0)(vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2))
 
   packages/mf-shared: {}
+
+  packages/seed:
+    devDependencies:
+      '@types/node':
+        specifier: 26.5.0
+        version: 26.5.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.0
+        version: 5.0.0(@types/node@26.5.0)(vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2))
+
+  packages/theme: {}
 
 packages:
 
@@ -687,6 +710,9 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/node@26.5.0':
+    resolution: {integrity: sha512-dVSGpriSoCgz8WnDNTuSSuSv1PC/ALXihO4ulRZt7Md8k9mlbdin3lGOcDE8SnWOgf513ByWlXd7BK4azmyg/A==}
 
   '@types/react-dom@19.2.7':
     resolution: {integrity: sha512-I8bPpDLcHBv1qiIiXDCy71Rt8eQDKJP0sMSWJphDdAcdqiJ1sGpZamavoEIRZmYzjia9LuEb2HlYdDpmoENpvQ==}
@@ -1332,6 +1358,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
+
   undici@7.29.0:
     resolution: {integrity: sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw==}
     engines: {node: '>=20.18.1'}
@@ -1960,6 +1989,10 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
+  '@types/node@26.5.0':
+    dependencies:
+      undici-types: 8.9.0
+
   '@types/react-dom@19.2.7(@types/react@19.2.18)':
     dependencies:
       '@types/react': 19.2.18
@@ -2059,14 +2092,14 @@ snapshots:
       '@typescript-eslint/types': 8.69.0
       eslint-visitor-keys: 5.0.1
 
-  '@vitest/mocker@5.0.0(vite@8.2.2(jiti@2.4.2))':
+  '@vitest/mocker@5.0.0(vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.2.3
     optionalDependencies:
-      vite: 8.2.2(jiti@2.4.2)
+      vite: 8.2.2(@types/node@26.5.0)(jiti@2.4.2)
 
   '@vitest/spy@5.0.0': {}
 
@@ -2560,6 +2593,8 @@ snapshots:
 
   typescript@6.0.3: {}
 
+  undici-types@8.9.0: {}
+
   undici@7.29.0: {}
 
   update-browserslist-db@1.3.2(browserslist@4.28.9):
@@ -2572,7 +2607,7 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  vite@8.2.2(jiti@2.4.2):
+  vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -2580,13 +2615,14 @@ snapshots:
       rolldown: 1.2.7
       tinyglobby: 0.2.17
     optionalDependencies:
+      '@types/node': 26.5.0
       fsevents: 2.3.3
       jiti: 2.4.2
 
-  vitest@5.0.0(vite@8.2.2(jiti@2.4.2)):
+  vitest@5.0.0(@types/node@26.5.0)(vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.2.2(jiti@2.4.2))
+      '@vitest/mocker': 5.0.0(vite@8.2.2(@types/node@26.5.0)(jiti@2.4.2))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -2597,8 +2633,10 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.2.2(jiti@2.4.2)
+      vite: 8.2.2(@types/node@26.5.0)(jiti@2.4.2)
       why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 26.5.0
     transitivePeerDependencies:
       - msw
 
