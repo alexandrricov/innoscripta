@@ -1,0 +1,174 @@
+/*
+ * Delivery's own styles. Every class is prefixed `delivery-` because three
+ * applications render into one document. Shared tokens come from
+ * @baseline/theme.
+ */
+
+.delivery-app {
+  padding: var(--space-6);
+}
+
+.delivery-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.delivery-header h2 {
+  font-size: var(--text-xl);
+}
+
+.delivery-project-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.delivery-notice {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+}
+
+.delivery-notice-failed {
+  border-color: var(--colour-attention);
+  background: var(--colour-attention-surface);
+  color: var(--colour-attention);
+}
+
+/* --- the tree --- */
+
+.delivery-tree,
+.delivery-node-children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delivery-tree {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+}
+
+.delivery-node-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.delivery-node-name {
+  font-weight: 500;
+}
+
+.delivery-node-derived,
+.delivery-node-count {
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.delivery-node-derived {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.delivery-node-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.delivery-node-actions button,
+.delivery-node-form button,
+.delivery-add-root button,
+.delivery-node-confirm button {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.delivery-node-actions button:hover,
+.delivery-node-form button:hover,
+.delivery-add-root button:hover {
+  border-color: var(--colour-border-strong);
+  color: var(--colour-text);
+}
+
+.delivery-node-delete:hover {
+  border-color: var(--colour-attention);
+  color: var(--colour-attention);
+}
+
+.delivery-node-move {
+  max-width: 11rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.delivery-node-form,
+.delivery-node-confirm,
+.delivery-add-root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--colour-border);
+  background: var(--colour-surface-sunken);
+  font-size: var(--text-sm);
+}
+
+.delivery-node-confirm {
+  background: var(--colour-attention-surface);
+  color: var(--colour-attention);
+}
+
+.delivery-node-input {
+  min-width: 14rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.delivery-node-hint {
+  color: var(--colour-text-muted);
+}
+
+.delivery-node-problem {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--colour-attention-surface);
+  color: var(--colour-attention);
+  font-size: var(--text-sm);
+}
+
+.delivery-add-root {
+  margin-top: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+}
