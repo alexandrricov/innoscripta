@@ -318,3 +318,48 @@ describe('the unit conversion the import does', () => {
     expect(() => deliverySliceOf(broken)).toThrow(/unknown employee "emp-999"/);
   });
 });
+
+describe('the grid horizon', () => {
+  it('comes back as twelve months for both implementations', async () => {
+    for (const [, createStore] of implementations) {
+      const store = await createStore(fixture());
+      const horizon = await store.gridHorizon();
+
+      expect(horizon).toHaveLength(12);
+      expect(horizon[0]).toStrictEqual({ year: 2026, month: 4 });
+      expect(horizon[11]).toStrictEqual({ year: 2027, month: 3 });
+    }
+  });
+
+  it('is written by seeding even when the plan is already there', async () => {
+    // A database created before the meta store existed: version 2 adds the
+    // store, and seeding has to fill the horizon without importing the plan on
+    // top of somebody's edits.
+    databaseCounter += 1;
+    const db = await openDeliveryDatabase(`horizon-test-${String(databaseCounter)}`);
+    await seedIfEmpty(db, () => Promise.resolve(fixture()));
+
+    await db.delete('meta', 'gridHorizon');
+    await db.put('breakdownItems', {
+      id: 'edited-by-hand',
+      projectId: 'p1',
+      parentId: null,
+      name: 'Mine',
+    });
+
+    let imports = 0;
+    await seedIfEmpty(db, () => {
+      imports += 1;
+      return Promise.resolve(fixture());
+    });
+
+    expect(imports).toBe(1);
+    await expect(db.get('meta', 'gridHorizon')).resolves.toStrictEqual({
+      from: '2026-04',
+      to: '2027-03',
+    });
+    // The hand-made item is still there: nothing was re-imported over it.
+    await expect(db.get('breakdownItems', 'edited-by-hand')).resolves.toBeDefined();
+    await expect(db.count('breakdownItems')).resolves.toBe(6);
+  });
+});

@@ -18,28 +18,28 @@
  * never what we displayed to them.
  */
 
-import { allocationCost, hoursFromCost } from './allocation-cost.ts';
-import type { YearMonth } from './calendar.ts';
-import { personMonthHours } from './person-month.ts';
-import type { RateSlice } from './rate-schedule.ts';
+/**
+ * Everything a conversion needs to know about one person's month: two numbers.
+ *
+ * Not the rate history, and not the contracted hours either. Conversion never
+ * needed either of those - it multiplies and divides by these two derived
+ * figures, and asking for more than it uses would oblige every caller to hold
+ * data it has no business holding. It is also exactly what the rate owner
+ * publishes across the app boundary.
+ */
+export interface MonthBasis {
+  /** `weeklyHours * workingDays / 5`, so it varies by person and by month. */
+  readonly personMonthHours: number;
+  /**
+   * The average price of an hour that month, weighted by working days at each
+   * rate. Zero when the month carries no priced working day.
+   */
+  readonly blendedHourlyRate: number;
+}
 
 export const GRID_UNITS = ['hours', 'personMonths', 'percent', 'cost'] as const;
 
 export type GridUnit = (typeof GRID_UNITS)[number];
-
-/**
- * Everything needed to convert one cell: which month, whose contract, and the
- * rates covering that month.
- *
- * Hours need none of it. Person-months and % of capacity need the contract,
- * because a person-month is `weeklyHours * workingDays / 5`. Cost needs the
- * rates.
- */
-export interface EmployeeMonth {
-  readonly month: YearMonth;
-  readonly weeklyHours: number;
-  readonly rateSlices: readonly RateSlice[];
-}
 
 /** Fixed by the specification, not a preference. */
 const DISPLAY_DECIMALS: Record<GridUnit, number> = {
@@ -55,18 +55,19 @@ const DISPLAY_DECIMALS: Record<GridUnit, number> = {
  * Use this for arithmetic and for comparisons. Pass the result through
  * `formatUnit` only when it is about to be shown.
  */
-export function toUnit(hours: number, unit: GridUnit, basis: EmployeeMonth): number {
+export function toUnit(hours: number, unit: GridUnit, basis: MonthBasis): number {
   assertNonNegative(hours, 'hours');
+  assertBasis(basis);
 
   switch (unit) {
     case 'hours':
       return hours;
     case 'personMonths':
-      return hours / personMonthHoursOf(basis);
+      return hours / basis.personMonthHours;
     case 'percent':
-      return (hours / personMonthHoursOf(basis)) * 100;
+      return (hours / basis.personMonthHours) * 100;
     case 'cost':
-      return allocationCost(hours, basis.rateSlices, basis.month);
+      return hours * basis.blendedHourlyRate;
   }
 }
 
@@ -74,21 +75,27 @@ export function toUnit(hours: number, unit: GridUnit, basis: EmployeeMonth): num
  * A value the user typed in `unit`, converted back to stored hours.
  *
  * Throws for a cost typed into a month with no priced working day, where the
- * conversion has no answer. Callers should not offer a cost edit there; see
- * `blendedHourlyRate`.
+ * conversion has no answer. Callers must not offer a cost edit there; the
+ * blended rate being zero is how they can tell.
  */
-export function fromUnit(value: number, unit: GridUnit, basis: EmployeeMonth): number {
+export function fromUnit(value: number, unit: GridUnit, basis: MonthBasis): number {
   assertNonNegative(value, unit);
+  assertBasis(basis);
 
   switch (unit) {
     case 'hours':
       return value;
     case 'personMonths':
-      return value * personMonthHoursOf(basis);
+      return value * basis.personMonthHours;
     case 'percent':
-      return (value / 100) * personMonthHoursOf(basis);
+      return (value / 100) * basis.personMonthHours;
     case 'cost':
-      return hoursFromCost(value, basis.rateSlices, basis.month);
+      if (basis.blendedHourlyRate === 0) {
+        throw new RangeError(
+          'This month has no priced working day, so a cost cannot be converted into hours',
+        );
+      }
+      return value / basis.blendedHourlyRate;
   }
 }
 
@@ -102,8 +109,22 @@ export function formatUnit(value: number, unit: GridUnit): string {
   return value.toFixed(DISPLAY_DECIMALS[unit]);
 }
 
-function personMonthHoursOf(basis: EmployeeMonth): number {
-  return personMonthHours(basis.weeklyHours, basis.month);
+/** How many decimals `unit` is displayed with, for rounding a set of cells. */
+export function displayDecimals(unit: GridUnit): number {
+  return DISPLAY_DECIMALS[unit];
+}
+
+function assertBasis(basis: MonthBasis): void {
+  if (!Number.isFinite(basis.personMonthHours) || basis.personMonthHours <= 0) {
+    throw new RangeError(
+      `A person-month must be a positive number of hours, got ${String(basis.personMonthHours)}`,
+    );
+  }
+  if (!Number.isFinite(basis.blendedHourlyRate) || basis.blendedHourlyRate < 0) {
+    throw new RangeError(
+      `A blended rate must be a non-negative number, got ${String(basis.blendedHourlyRate)}`,
+    );
+  }
 }
 
 function assertNonNegative(value: number, name: string): void {

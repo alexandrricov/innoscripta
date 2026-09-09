@@ -5,7 +5,12 @@
  * pure functions for them.
  */
 
-import type { Allocation, BreakdownItem } from '@baseline/domain';
+import {
+  type Allocation,
+  type BreakdownItem,
+  monthsBetween,
+  parseYearMonth,
+} from '@baseline/domain';
 
 import { descendantsOf, moveProblem, nameProblem, newItemId } from '../breakdown/tree.ts';
 import type { ChildInsertion, DeliveryStore } from './delivery-store.ts';
@@ -20,6 +25,11 @@ export function createInMemoryDeliveryStore(slice: DeliverySlice): DeliveryStore
     [...items.values()].filter((item) => item.projectId === projectId);
 
   return {
+    gridHorizon: () =>
+      Promise.resolve(
+        monthsBetween(parseYearMonth(slice.gridHorizon.from), parseYearMonth(slice.gridHorizon.to)),
+      ),
+
     listProjects: () => Promise.resolve(projects),
 
     listBreakdown: (projectId) => Promise.resolve(itemsOfProject(projectId)),

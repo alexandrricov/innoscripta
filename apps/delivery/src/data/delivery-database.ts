@@ -12,9 +12,25 @@ import type { Project } from './delivery-store.ts';
 import type { DeliverySlice } from './seed-slice.ts';
 
 const DATABASE_NAME = 'baseline-delivery';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
+
+/** The twelve months the grid opens on. */
+export interface GridHorizon {
+  readonly from: string;
+  readonly to: string;
+}
 
 export interface DeliverySchema extends DBSchema {
+  /**
+   * Out-of-line keys, because there is exactly one entry and it has no natural
+   * id. Added in version 2, which is why seeding checks for it separately: an
+   * existing database has a plan already and must not be re-imported to gain a
+   * horizon.
+   */
+  meta: {
+    key: string;
+    value: GridHorizon;
+  };
   projects: {
     key: string;
     value: Project;
@@ -47,7 +63,16 @@ export type DeliveryDatabase = IDBPDatabase<DeliverySchema>;
 /** `name` is a parameter only so tests can use a fresh database each time. */
 export function openDeliveryDatabase(name: string = DATABASE_NAME): Promise<DeliveryDatabase> {
   return openDB<DeliverySchema>(name, DATABASE_VERSION, {
-    upgrade(db) {
+    upgrade(db, from) {
+      if (from < 2) {
+        // Created without wiping anything: a schema addition must not cost
+        // somebody their edits.
+        db.createObjectStore('meta');
+      }
+      if (from >= 1) {
+        return;
+      }
+
       db.createObjectStore('projects', { keyPath: 'id' });
 
       const items = db.createObjectStore('breakdownItems', { keyPath: 'id' });
@@ -75,25 +100,43 @@ export async function seedIfEmpty(
   db: DeliveryDatabase,
   loadSlice: () => Promise<DeliverySlice>,
 ): Promise<void> {
-  if ((await db.count('projects')) > 0) {
+  // Two questions, not one. A database created before the meta store existed
+  // holds a plan and edits somebody made, and needs the horizon without being
+  // imported over the top.
+  const needsPlan = (await db.count('projects')) === 0;
+  const needsHorizon = (await db.get('meta', HORIZON_KEY)) === undefined;
+
+  if (!needsPlan && !needsHorizon) {
     return;
   }
 
   const slice = await loadSlice();
 
-  const tx = db.transaction(['projects', 'breakdownItems', 'allocations'], 'readwrite');
+  const tx = db.transaction(['meta', 'projects', 'breakdownItems', 'allocations'], 'readwrite');
   const projects = tx.objectStore('projects');
+  const writes: Promise<unknown>[] = [];
+
+  if ((await tx.objectStore('meta').get(HORIZON_KEY)) === undefined) {
+    writes.push(tx.objectStore('meta').put(slice.gridHorizon, HORIZON_KEY));
+  }
 
   if ((await projects.count()) === 0) {
     const items = tx.objectStore('breakdownItems');
     const allocations = tx.objectStore('allocations');
 
-    await Promise.all([
+    writes.push(
       ...slice.projects.map((project) => projects.put(project)),
       ...slice.items.map((item) => items.put(item)),
       ...slice.allocations.map((allocation) => allocations.put(allocation)),
-    ]);
+    );
   }
 
+  await Promise.all(writes);
   await tx.done;
+}
+
+const HORIZON_KEY = 'gridHorizon';
+
+export function readGridHorizon(db: DeliveryDatabase): Promise<GridHorizon | undefined> {
+  return db.get('meta', HORIZON_KEY);
 }

@@ -4,6 +4,8 @@ export {
   type AssignmentRow,
   type BreakdownItem,
   type BreakdownRow,
+  type FlatRow,
+  flattenRows,
   type ItemRow,
   rollUpHours,
 } from './breakdown.ts';
@@ -17,6 +19,8 @@ export {
   formatYearMonth,
   isWorkingDay,
   monthOf,
+  monthsBetween,
+  nextMonth,
   parseCalendarDay,
   parseYearMonth,
   sameMonth,
@@ -29,11 +33,12 @@ export { hoursPerWorkingDay, personMonthHours } from './person-month.ts';
 export { type RateRecord, type RateSlice, splitMonthByRates } from './rate-schedule.ts';
 export { distributeRounded, type RoundedBreakdown } from './rounding.ts';
 export {
-  type EmployeeMonth,
+  displayDecimals,
   formatUnit,
   fromUnit,
   GRID_UNITS,
   type GridUnit,
+  type MonthBasis,
   toUnit,
 } from './units.ts';
 export {

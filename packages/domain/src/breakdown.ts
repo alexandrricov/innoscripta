@@ -244,3 +244,23 @@ function addInto(target: number[], source: readonly number[]): void {
 function sum(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
+
+/** One row of the grid, with how deep it sits for indentation. */
+export interface FlatRow {
+  readonly row: BreakdownRow;
+  readonly depth: number;
+}
+
+/**
+ * The tree in the order a table renders it.
+ *
+ * The roll-up is naturally recursive and a table is naturally flat, so the
+ * shape changes here rather than inside a component. Collapsing a branch later
+ * is a filter over this list.
+ */
+export function flattenRows(rows: readonly BreakdownRow[], depth = 0): readonly FlatRow[] {
+  return rows.flatMap((row) => [
+    { row, depth },
+    ...(row.kind === 'item' ? flattenRows(row.children, depth + 1) : []),
+  ]);
+}

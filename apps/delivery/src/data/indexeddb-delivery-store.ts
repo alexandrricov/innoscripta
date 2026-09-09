@@ -6,10 +6,15 @@
  * is pure and tested. This file is transactions.
  */
 
-import type { Allocation, BreakdownItem } from '@baseline/domain';
+import {
+  type Allocation,
+  type BreakdownItem,
+  monthsBetween,
+  parseYearMonth,
+} from '@baseline/domain';
 
 import { descendantsOf, moveProblem, nameProblem, newItemId } from '../breakdown/tree.ts';
-import type { DeliveryDatabase } from './delivery-database.ts';
+import { type DeliveryDatabase, readGridHorizon } from './delivery-database.ts';
 import type { ChildInsertion, DeliveryStore } from './delivery-store.ts';
 
 export function createIndexedDbDeliveryStore(db: DeliveryDatabase): DeliveryStore {
@@ -23,6 +28,14 @@ export function createIndexedDbDeliveryStore(db: DeliveryDatabase): DeliveryStor
   }
 
   return {
+    gridHorizon: async () => {
+      const stored = await readGridHorizon(db);
+      if (!stored) {
+        throw new Error('The grid horizon is missing from the store');
+      }
+      return monthsBetween(parseYearMonth(stored.from), parseYearMonth(stored.to));
+    },
+
     listProjects: () => db.getAll('projects'),
 
     listBreakdown: (projectId) => db.getAllFromIndex('breakdownItems', 'by-project', projectId),

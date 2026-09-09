@@ -11,7 +11,7 @@
  * them.
  */
 
-import type { Allocation, BreakdownItem } from '@baseline/domain';
+import type { Allocation, BreakdownItem, YearMonth } from '@baseline/domain';
 
 /** A project as Delivery knows it. Dates stay strings; nothing computes on them yet. */
 export interface Project {
@@ -29,6 +29,9 @@ export interface ChildInsertion {
 }
 
 export interface DeliveryStore {
+  /** The twelve months the grid opens on, from the fixture's own metadata. */
+  gridHorizon(): Promise<readonly YearMonth[]>;
+
   listProjects(): Promise<readonly Project[]>;
 
   listBreakdown(projectId: string): Promise<readonly BreakdownItem[]>;

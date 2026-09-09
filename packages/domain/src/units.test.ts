@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { allocationCost, blendedHourlyRate } from './allocation-cost.ts';
 import { parseCalendarDay, yearMonth } from './calendar.ts';
+import { personMonthHours } from './person-month.ts';
 import { splitMonthByRates } from './rate-schedule.ts';
-import { type EmployeeMonth, formatUnit, fromUnit, GRID_UNITS, toUnit } from './units.ts';
+import {
+  displayDecimals,
+  formatUnit,
+  fromUnit,
+  GRID_UNITS,
+  type MonthBasis,
+  toUnit,
+} from './units.ts';
 
 const MARCH_2026 = yearMonth(2026, 3);
 
@@ -14,24 +23,24 @@ const OKAFOR_SLICES = splitMonthByRates(
   MARCH_2026,
 );
 
-/** A. Okafor: 40 h/week, March 2026, rates 80 then 95 from the 12th. */
-const OKAFOR_MARCH: EmployeeMonth = {
-  month: MARCH_2026,
-  weeklyHours: 40,
-  rateSlices: OKAFOR_SLICES,
+/**
+ * A. Okafor's March 2026, built from the domain rather than hand-typed, so the
+ * two numbers here are the same ones the rate owner would publish.
+ */
+const OKAFOR_MARCH: MonthBasis = {
+  personMonthHours: personMonthHours(40, MARCH_2026),
+  blendedHourlyRate: blendedHourlyRate(OKAFOR_SLICES, MARCH_2026),
 };
 
-/** The same month for a 32 h/week contract, so the person-month is 140.8 h. */
-const PART_TIME_MARCH: EmployeeMonth = {
-  month: MARCH_2026,
-  weeklyHours: 32,
-  rateSlices: OKAFOR_SLICES,
+/** The same month on a 32 h/week contract: a 140.8 hour person-month. */
+const PART_TIME_MARCH: MonthBasis = {
+  personMonthHours: personMonthHours(32, MARCH_2026),
+  blendedHourlyRate: OKAFOR_MARCH.blendedHourlyRate,
 };
 
-const UNPRICED_MARCH: EmployeeMonth = {
-  month: MARCH_2026,
-  weeklyHours: 40,
-  rateSlices: [{ kind: 'unpriced', workingDays: 22 }],
+const UNPRICED_MARCH: MonthBasis = {
+  personMonthHours: personMonthHours(40, MARCH_2026),
+  blendedHourlyRate: 0,
 };
 
 describe('the reference cell in all four units', () => {
@@ -40,7 +49,6 @@ describe('the reference cell in all four units', () => {
   });
 
   it('shows 88 hours as 88.00 hours', () => {
-    expect(toUnit(88, 'hours', OKAFOR_MARCH)).toBe(88);
     expect(formatUnit(toUnit(88, 'hours', OKAFOR_MARCH), 'hours')).toBe('88.00');
   });
 
@@ -60,22 +68,43 @@ describe('the reference cell in all four units', () => {
   });
 });
 
+describe('the blended rate is a faithful shortcut for the cost rule', () => {
+  it('agrees with pricing the month slice by slice', () => {
+    // `allocationCost` is the direct expression of rule R1: working days before
+    // the change at the old rate, days from it at the new one. Multiplying by
+    // the blended rate is the short way round, and this is the check that the
+    // two do not disagree.
+    for (const hours of [88, 44, 17.5, 1, 0]) {
+      expect(toUnit(hours, 'cost', OKAFOR_MARCH)).toBeCloseTo(
+        allocationCost(hours, OKAFOR_SLICES, MARCH_2026),
+        8,
+      );
+    }
+  });
+
+  it('is exact on the reference numbers', () => {
+    expect(toUnit(88, 'cost', OKAFOR_MARCH)).toBe(allocationCost(88, OKAFOR_SLICES, MARCH_2026));
+  });
+});
+
 describe('switching units and switching back', () => {
   it('leaves the stored value alone, in every unit', () => {
     for (const unit of GRID_UNITS) {
       for (const hours of [88, 44, 17.5, 140.8, 1, 0]) {
-        const roundTripped = fromUnit(toUnit(hours, unit, OKAFOR_MARCH), unit, OKAFOR_MARCH);
-
-        expect(roundTripped).toBeCloseTo(hours, 10);
+        expect(fromUnit(toUnit(hours, unit, OKAFOR_MARCH), unit, OKAFOR_MARCH)).toBeCloseTo(
+          hours,
+          10,
+        );
       }
     }
   });
 
   it('leaves it alone for a part-time contract too', () => {
     for (const unit of GRID_UNITS) {
-      const roundTripped = fromUnit(toUnit(70.4, unit, PART_TIME_MARCH), unit, PART_TIME_MARCH);
-
-      expect(roundTripped).toBeCloseTo(70.4, 10);
+      expect(fromUnit(toUnit(70.4, unit, PART_TIME_MARCH), unit, PART_TIME_MARCH)).toBeCloseTo(
+        70.4,
+        10,
+      );
     }
   });
 });
@@ -93,21 +122,15 @@ describe('the display value is lossy, which is why switching units must not writ
   });
 
   it('is exact through the unrounded value', () => {
-    const stored = 88.4;
+    const exact = toUnit(88.4, 'percent', OKAFOR_MARCH);
 
-    const exact = toUnit(stored, 'percent', OKAFOR_MARCH);
-
-    expect(fromUnit(exact, 'percent', OKAFOR_MARCH)).toBeCloseTo(stored, 10);
+    expect(fromUnit(exact, 'percent', OKAFOR_MARCH)).toBeCloseTo(88.4, 10);
   });
 });
 
-describe('the contract is part of the conversion', () => {
+describe('the person-month is part of the conversion', () => {
   it('gives a 32 h/week person-month of 140.8 hours', () => {
     expect(fromUnit(1, 'personMonths', PART_TIME_MARCH)).toBeCloseTo(140.8, 10);
-  });
-
-  it('makes half a part-time month 70.4 hours', () => {
-    expect(toUnit(70.4, 'percent', PART_TIME_MARCH)).toBeCloseTo(50, 10);
   });
 
   it('reads the same hours as different percentages for different contracts', () => {
@@ -138,6 +161,13 @@ describe('display precision is fixed by the specification', () => {
     expect(formatUnit(1 / 3, 'percent')).toBe('0.3');
     expect(formatUnit(1 / 3, 'cost')).toBe('0.33');
   });
+
+  it('reports the same precision for rounding a set of cells together', () => {
+    expect(displayDecimals('hours')).toBe(2);
+    expect(displayDecimals('personMonths')).toBe(2);
+    expect(displayDecimals('percent')).toBe(1);
+    expect(displayDecimals('cost')).toBe(2);
+  });
 });
 
 describe('rejected input', () => {
@@ -147,5 +177,13 @@ describe('rejected input', () => {
       expect(() => fromUnit(-1, unit, OKAFOR_MARCH)).toThrow(RangeError);
       expect(() => toUnit(Number.NaN, unit, OKAFOR_MARCH)).toThrow(RangeError);
     }
+  });
+
+  it('refuses a basis that cannot describe a month', () => {
+    const noMonth: MonthBasis = { personMonthHours: 0, blendedHourlyRate: 80 };
+    const negativeRate: MonthBasis = { personMonthHours: 176, blendedHourlyRate: -1 };
+
+    expect(() => toUnit(88, 'hours', noMonth)).toThrow(/person-month/);
+    expect(() => toUnit(88, 'hours', negativeRate)).toThrow(/blended rate/);
   });
 });

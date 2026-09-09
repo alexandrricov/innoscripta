@@ -5,6 +5,7 @@ import {
   type AssignmentRow,
   type BreakdownItem,
   type BreakdownRow,
+  flattenRows,
   type ItemRow,
   rollUpHours,
 } from './breakdown.ts';
@@ -226,5 +227,37 @@ describe('broken data', () => {
     expect(() =>
       rollUpHours(ITEMS, [allocation('x', 'leafOne', 'okafor', [2026, 4], Number.NaN)], HORIZON),
     ).toThrow(RangeError);
+  });
+});
+
+describe('flattenRows', () => {
+  const roots = rollUpHours(ITEMS, ALLOCATIONS, HORIZON);
+
+  it('lists the tree in render order with a depth on each row', () => {
+    expect(
+      flattenRows(roots).map((entry) => ({
+        depth: entry.depth,
+        label: entry.row.kind === 'item' ? entry.row.name : entry.row.employeeId,
+      })),
+    ).toStrictEqual([
+      { depth: 0, label: 'Ledger migration' },
+      { depth: 1, label: 'Design' },
+      { depth: 2, label: 'Schema' },
+      { depth: 3, label: 'okafor' },
+      { depth: 3, label: 'brandt' },
+      { depth: 2, label: 'Mapping' },
+      { depth: 3, label: 'okafor' },
+      { depth: 0, label: 'Reporting cut-over' },
+    ]);
+  });
+
+  it('keeps every row of the tree', () => {
+    const countRows = (rows: readonly BreakdownRow[]): number =>
+      rows.reduce(
+        (total, row) => total + 1 + (row.kind === 'item' ? countRows(row.children) : 0),
+        0,
+      );
+
+    expect(flattenRows(roots)).toHaveLength(countRows(roots));
   });
 });

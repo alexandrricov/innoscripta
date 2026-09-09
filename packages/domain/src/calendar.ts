@@ -105,3 +105,29 @@ export function isWorkingDay(day: CalendarDay): boolean {
 function pad(value: number, width: number): string {
   return String(value).padStart(width, '0');
 }
+
+/**
+ * Every month from `from` to `to`, both included.
+ *
+ * The grid's horizon arrives as two endpoints and is needed as twelve columns.
+ * An inverted range yields nothing rather than throwing, which keeps a bad
+ * configuration from taking the page down - the grid simply has no columns.
+ */
+export function monthsBetween(from: YearMonth, to: YearMonth): readonly YearMonth[] {
+  const months: YearMonth[] = [];
+  let current = from;
+
+  while (compareYearMonth(current, to) <= 0) {
+    months.push(current);
+    current = nextMonth(current);
+  }
+
+  return months;
+}
+
+/** The month after this one, rolling the year over in December. */
+export function nextMonth(month: YearMonth): YearMonth {
+  return month.month === 12
+    ? { year: month.year + 1, month: 1 }
+    : { year: month.year, month: month.month + 1 };
+}
