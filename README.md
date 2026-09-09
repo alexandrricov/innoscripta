@@ -195,9 +195,16 @@ day (adding public holidays, say) would silently change how many hours every
 stored allocation represents. The plan would get more expensive with nothing
 edited.
 
-Against it: the seed arrives in person-months and the grid's default display is
-person-months, so conversion happens more often this way round. The seed is
-converted once, on import.
+The case for person-months instead, which is stronger than it first looks: the
+seed already arrives in them, the grid's default display is in them, and storing
+them would make two units free of the People contract rather than one, since % of
+capacity is just person-months times a hundred.
+
+It still loses on the point above. A stored person-month only means something
+once you know whose month and which month, so the number in the store is not
+self-contained. A stored hour is. The conversion cost is paid at the edge, where
+it is visible and tested; the ambiguity would be paid in the store, where it is
+not.
 
 ### Switching units never writes
 
@@ -238,10 +245,9 @@ them - dividing gives EUR 104.77/h, which is nobody's rate.
 
 So cost is computed per assignment and summed upwards, in a module separate from
 the hours roll-up. Hours need nothing from People; cost does. Keeping them apart
-is what lets the grid render and stay editable in hours, person-months and % when
-the rate source is unavailable, with only the cost column reporting itself
-missing. There is no flag anywhere for that - the caller simply does not call the
-cost roll-up.
+is what lets the grid still render and stay editable in hours when the People
+contract is unavailable. There is no flag anywhere for that - the caller simply
+does not call the cost roll-up.
 
 ### % of capacity shows nothing on a derived row
 
@@ -280,9 +286,16 @@ R5 asks for both halves: People shows the badge, Delivery names the assignment
 that caused it. So each remote exposes a typed contract through Module Federation
 and resolves the other's URL from the same runtime configuration.
 
-Neither app needs the other to function. People down means Delivery still edits
-in hours, person-months and %, with the cost column reporting itself unavailable.
+Neither app needs the other to render or to accept an edit. People down means
+Delivery still shows its tree and its grid and still takes edits, in hours.
 Delivery down means People loses only the oversubscription badge.
+
+Be precise about what a People outage actually costs, because it is more than
+the cost column: **hours are the only unit that survives it.** A person-month is
+`weeklyHours * workingDays / 5`, so its size is a property of the contract People
+owns; person-months, % of capacity and cost all go through the same contract and
+all become unavailable together. Hours are the canonical unit precisely because
+they depend on nobody.
 
 The remotes do reference each other at runtime. There is no build-time cycle -
 two independent lookups through configuration - but it is worth saying so before

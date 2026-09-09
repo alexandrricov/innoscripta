@@ -7,9 +7,11 @@
  * therefore computed on the assignment and summed upwards.
  *
  * This lives apart from `rollUpHours` on purpose. Hours need nothing from the
- * People side, cost does. Keeping them separate is what lets the grid render
- * and stay editable in hours, person-months and % when the rate source is
- * unavailable, with only the cost column reporting itself missing.
+ * People side, cost does. Keeping them separate is what lets the grid still
+ * render and stay editable in hours when the People contract is unavailable.
+ * Hours are the only unit that survives that: person-months and % of capacity
+ * both go through `personMonthHours`, which needs the contracted weekly hours
+ * People owns.
  *
  * Note that the ownership boundary is about data, not module visibility: both
  * apps share this package, so what stops Delivery pricing the grid itself is
