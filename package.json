@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "typecheck": "tsc -b",
     "test": "pnpm --recursive --stream test",
     "build": "pnpm --recursive --stream build",
