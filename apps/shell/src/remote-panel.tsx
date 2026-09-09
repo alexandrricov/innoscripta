@@ -8,10 +8,10 @@
  * thrown while the remote renders.
  */
 
+import type { RemoteName } from '@baseline/contracts';
 import { Component, type ErrorInfo, lazy, type ReactNode, Suspense } from 'react';
 
 import { loadRemoteApp } from './remotes.ts';
-import type { RemoteName } from './runtime-config.ts';
 
 interface RemotePanelProps {
   readonly remote: RemoteName;

@@ -9,6 +9,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@baseline/contracts": "workspace:*",
     "@baseline/domain": "workspace:*",
     "@baseline/theme": "workspace:*",
     "@module-federation/enhanced": "2.9.0",

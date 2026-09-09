@@ -6,16 +6,15 @@
  * injected configuration.
  */
 
-import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
-import type { ComponentType } from 'react';
-
 import {
   brokenRemotes,
   readRuntimeConfig,
   REMOTE_NAMES,
   remoteEntryUrl,
   type RemoteName,
-} from './runtime-config.ts';
+} from '@baseline/contracts';
+import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
+import type { ComponentType } from 'react';
 
 /** What every remote is expected to expose under `./App`. */
 export interface RemoteAppModule {
