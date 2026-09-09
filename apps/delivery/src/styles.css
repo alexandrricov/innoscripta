@@ -273,3 +273,62 @@
 .delivery-grid-cell {
   min-width: 4.5rem;
 }
+
+/* --- unit switcher and grid marks --- */
+
+.delivery-grid-controls {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.delivery-units ul {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delivery-unit-button {
+  min-width: 3.5rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.delivery-unit-button[aria-current='true'] {
+  border-color: transparent;
+  background: var(--colour-accent);
+  color: var(--colour-accent-text);
+}
+
+.delivery-unit-button:disabled {
+  color: var(--colour-border-strong);
+  cursor: not-allowed;
+}
+
+.delivery-grid-hint {
+  margin: 0;
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.delivery-grid-unpriced {
+  color: var(--colour-attention);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Never colour alone: the dagger carries the same meaning without it. */
+.delivery-grid-over {
+  background: var(--colour-attention-surface);
+  color: var(--colour-attention);
+}

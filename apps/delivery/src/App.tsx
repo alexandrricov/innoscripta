@@ -4,6 +4,7 @@
 import '@baseline/theme/theme.css';
 import './styles.css';
 
+import type { GridUnit } from '@baseline/domain';
 import { useState } from 'react';
 
 import { AddRootForm } from './breakdown/add-root-form.tsx';
@@ -11,6 +12,7 @@ import { childrenOf } from './breakdown/tree.ts';
 import { TreeNode } from './breakdown/tree-node.tsx';
 import { useBreakdown } from './breakdown/use-breakdown.ts';
 import { StaffingGrid } from './grid/staffing-grid.tsx';
+import { UnitSwitcher } from './grid/unit-switcher.tsx';
 import { useGrid } from './grid/use-grid.ts';
 
 /**
@@ -25,6 +27,9 @@ const VIEW_LABELS: Record<View, string> = {
   structure: 'Work breakdown',
 };
 
+const EVERY_UNIT_AVAILABLE: ReadonlySet<GridUnit> = new Set();
+const UNITS_NEEDING_PEOPLE: ReadonlySet<GridUnit> = new Set(['personMonths', 'percent', 'cost']);
+
 export function App() {
   /**
    * Which project is open, and which view, are component state rather than a
@@ -33,9 +38,16 @@ export function App() {
    */
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
   const [view, setView] = useState<View>('grid');
+  // Person-months is the default the specification's own figure shows.
+  const [unit, setUnit] = useState<GridUnit>('personMonths');
 
   const breakdown = useBreakdown(projectId);
-  const grid = useGrid(projectId);
+  const grid = useGrid(projectId, unit);
+
+  // Falling back rather than showing a grid of blanks: without People the only
+  // unit that means anything is hours.
+  const shownUnit: GridUnit =
+    grid.status === 'ready' && grid.peopleUnavailable !== null ? 'hours' : unit;
 
   return (
     <section className="delivery-app" aria-labelledby="delivery-heading">
@@ -97,12 +109,33 @@ export function App() {
 
           {grid.status === 'ready' && (
             <>
-              {grid.namesUnavailable !== null && (
+              <div className="delivery-grid-controls">
+                <UnitSwitcher
+                  unit={shownUnit}
+                  onChange={setUnit}
+                  // Everything but hours needs the size of a person-month or the
+                  // price of an hour, and both belong to People.
+                  disabled={
+                    grid.peopleUnavailable === null ? EVERY_UNIT_AVAILABLE : UNITS_NEEDING_PEOPLE
+                  }
+                />
+
+                {shownUnit === 'percent' && (
+                  <p className="delivery-grid-hint">
+                    % of capacity is a percentage of one person&rsquo;s month, so work packages show
+                    none.
+                  </p>
+                )}
+              </div>
+
+              {grid.peopleUnavailable !== null && (
                 <p className="delivery-notice delivery-notice-degraded" role="status">
-                  People is unavailable, so rows are labelled by employee id. Hours still add up.
+                  People is unavailable, so rows are labelled by employee id and only hours can be
+                  shown. Nothing else here needs it.
                 </p>
               )}
-              <StaffingGrid data={grid} />
+
+              <StaffingGrid data={grid} unit={shownUnit} />
             </>
           )}
         </>
