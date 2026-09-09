@@ -135,7 +135,7 @@ export function App() {
                 </p>
               )}
 
-              <StaffingGrid data={grid} unit={shownUnit} />
+              <StaffingGrid data={grid} actions={grid} unit={shownUnit} />
             </>
           )}
         </>

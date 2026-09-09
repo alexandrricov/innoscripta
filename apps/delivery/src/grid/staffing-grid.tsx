@@ -7,11 +7,16 @@ import {
   type GridUnit,
   type UnitRowValues,
 } from '@baseline/domain';
+import { useState } from 'react';
 
-import type { GridData } from './use-grid.ts';
+import { AddPersonRow } from './add-person-row.tsx';
+import { GridCell } from './grid-cell.tsx';
+import { renderList } from './render-list.ts';
+import type { GridActions, GridData } from './use-grid.ts';
 
 interface StaffingGridProps {
   readonly data: GridData;
+  readonly actions: GridActions;
   readonly unit: GridUnit;
 }
 
@@ -44,9 +49,9 @@ function monthLabel(month: { year: number; month: number }): string {
  *
  * Only along the row. The column direction - a parent's month cell against the
  * sum of its children in that month - can still differ by one unit of the last
- * place, because no independent rounding satisfies both axes at once. That is
- * stated in the README rather than hidden: proper two-dimensional controlled
- * rounding is a different algorithm.
+ * place, because no independent rounding satisfies both axes at once. Stated in
+ * the README rather than hidden: proper two-dimensional controlled rounding is
+ * a different algorithm.
  */
 function displayed(
   values: UnitRowValues | undefined,
@@ -74,107 +79,170 @@ function displayed(
   return { cells: parts, total };
 }
 
-export function StaffingGrid({ data, unit }: StaffingGridProps) {
-  const { horizon, rows, values, employeeNames, capacity } = data;
+export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
+  const { horizon, rows, values, employeeNames, capacity, peopleUnavailable } = data;
+  const [problem, setProblem] = useState<string | null>(null);
 
   const loadOf = (employeeId: string, column: number): CapacityLoad | undefined => {
     const month = horizon[column];
     return month === undefined ? undefined : capacity.get(employeeId)?.get(formatYearMonth(month));
   };
 
+  /** Why this cell cannot be typed into, or nothing when it can. */
+  const readOnlyBecause = (employeeId: string, column: number): string | undefined => {
+    if (unit === 'hours') {
+      return undefined;
+    }
+
+    const month = horizon[column];
+    const known = month === undefined ? undefined : data.basisOf(employeeId, month);
+
+    if (!known) {
+      return 'People is unavailable, so only hours can be edited';
+    }
+    if (unit === 'cost' && known.basis.blendedHourlyRate === 0) {
+      return 'This month has no rate behind it, so a cost cannot be turned back into hours';
+    }
+    return undefined;
+  };
+
+  const everybody = [...employeeNames].map(([id, name]) => ({ id, name }));
+
   return (
-    // A real table, not a grid of divs. The content is tabular and a screen
-    // reader should be able to say which row and column a number sits in. The
-    // wrapper scrolls because thirteen columns do not fit a narrow window.
-    <div className="delivery-grid-scroll">
-      <table className="delivery-grid">
-        <caption className="bl-visually-hidden">
-          Planned effort by work package and month. Derived rows are summed from the rows beneath
-          them.
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col" className="delivery-grid-rowhead">
-              Work package / person
-            </th>
-            {horizon.map((month) => (
-              <th key={formatYearMonth(month)} scope="col" className="delivery-grid-month">
-                {monthLabel(month)}
+    <>
+      {/* One live region for the whole grid: a cell is too small to hold a
+          sentence, and the reason should be announced once. */}
+      <p className="delivery-grid-problem" role="alert">
+        {problem}
+      </p>
+
+      <div className="delivery-grid-scroll">
+        <table className="delivery-grid">
+          <caption className="bl-visually-hidden">
+            Planned effort by work package and month. Derived rows are summed from the rows beneath
+            them and cannot be edited.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col" className="delivery-grid-rowhead">
+                Work package / person
               </th>
-            ))}
-            <th scope="col" className="delivery-grid-total">
-              Total
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ row, depth }) => {
-            const derived = row.kind === 'item';
-            const label = derived
-              ? row.name
-              : (employeeNames.get(row.employeeId) ?? row.employeeId);
-            const key = derived
-              ? `item:${row.id}`
-              : `assignment:${row.breakdownItemId}:${row.employeeId}`;
-
-            const own = values.get(row);
-            const { cells, total } = displayed(own, unit, horizon.length);
-
-            return (
-              <tr key={key} className={derived ? 'delivery-grid-derived-row' : undefined}>
-                <th
-                  scope="row"
-                  className="delivery-grid-rowhead"
-                  style={{ paddingLeft: `${String(0.5 + depth * 1.1)}rem` }}
-                >
-                  {label}
-                  {derived && <span className="delivery-grid-derived-mark"> derived</span>}
-                  {own?.hasUnpricedHours === true && (
-                    <span
-                      className="delivery-grid-unpriced"
-                      title="Some hours have no rate behind them"
-                    >
-                      {' '}
-                      unpriced
-                    </span>
-                  )}
+              {horizon.map((month) => (
+                <th key={formatYearMonth(month)} scope="col" className="delivery-grid-month">
+                  {monthLabel(month)}
                 </th>
+              ))}
+              <th scope="col" className="delivery-grid-total">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {renderList(rows).map((entry) => {
+              if (entry.kind === 'addPerson') {
+                const alreadyOn = new Set(
+                  rows
+                    .map(({ row }) => row)
+                    .filter(
+                      (row) => row.kind === 'assignment' && row.breakdownItemId === entry.itemId,
+                    )
+                    .map((row) => (row.kind === 'assignment' ? row.employeeId : '')),
+                );
 
-                {cells.map((value, column) => {
-                  const load = derived ? undefined : loadOf(row.employeeId, column);
-                  const over = load?.isOversubscribed === true;
-                  const causing =
-                    over && load.causingAllocationId !== undefined && row.kind === 'assignment';
+                return (
+                  <AddPersonRow
+                    key={`add:${entry.itemId}`}
+                    itemName={entry.itemName}
+                    columns={horizon.length}
+                    depth={entry.depth}
+                    available={
+                      peopleUnavailable === null
+                        ? everybody.filter((employee) => !alreadyOn.has(employee.id))
+                        : []
+                    }
+                    onAdd={(employeeId) => actions.addPerson(entry.itemId, employeeId)}
+                  />
+                );
+              }
 
-                  return (
-                    <td
-                      key={formatYearMonth(horizon[column] ?? { year: 0, month: column + 1 })}
-                      className={`delivery-grid-cell${over ? ' delivery-grid-over' : ''}`}
-                    >
-                      {value === null || value === 0 ? '' : formatUnit(value, unit)}
-                      {over && value !== null && value !== 0 && (
-                        <>
-                          <span aria-hidden="true"> †</span>
-                          <span className="bl-visually-hidden">
-                            {' '}
-                            over capacity: {load.allocatedHours.toFixed(2)} hours allocated across
-                            every project against {load.capacityHours.toFixed(2)} of capacity
-                            {causing ? ', flagged by the most recently edited assignment' : ''}
-                          </span>
-                        </>
-                      )}
-                    </td>
-                  );
-                })}
+              const { row, depth } = entry;
+              const derived = row.kind === 'item';
+              const label = derived
+                ? row.name
+                : (employeeNames.get(row.employeeId) ?? row.employeeId);
+              const key = derived
+                ? `item:${row.id}`
+                : `assignment:${row.breakdownItemId}:${row.employeeId}`;
 
-                <td className="delivery-grid-cell delivery-grid-total">
-                  {total === null || total === 0 ? '' : formatUnit(total, unit)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              const own = values.get(row);
+              const { cells, total } = displayed(own, unit, horizon.length);
+
+              return (
+                <tr key={key} className={derived ? 'delivery-grid-derived-row' : undefined}>
+                  <th
+                    scope="row"
+                    className="delivery-grid-rowhead"
+                    style={{ paddingLeft: `${String(0.5 + depth * 1.1)}rem` }}
+                  >
+                    {label}
+                    {derived && <span className="delivery-grid-derived-mark"> derived</span>}
+                    {own?.hasUnpricedHours === true && (
+                      <span
+                        className="delivery-grid-unpriced"
+                        title="Some hours below this row have no rate behind them"
+                      >
+                        {' '}
+                        unpriced
+                      </span>
+                    )}
+                  </th>
+
+                  {cells.map((value, column) => {
+                    const monthKey = formatYearMonth(
+                      horizon[column] ?? { year: 0, month: column + 1 },
+                    );
+
+                    // Derived rows are read-only, and that is a fact about the
+                    // type rather than a check: an item row has no employeeId,
+                    // so there is nowhere for an edit to land.
+                    if (row.kind !== 'assignment') {
+                      return (
+                        <td key={monthKey} className="delivery-grid-cell">
+                          {value === null || value === 0 ? '' : formatUnit(value, unit)}
+                        </td>
+                      );
+                    }
+
+                    return (
+                      <GridCell
+                        key={monthKey}
+                        value={value}
+                        unit={unit}
+                        readOnlyBecause={readOnlyBecause(row.employeeId, column)}
+                        load={loadOf(row.employeeId, column)}
+                        onCommit={async (typed) => {
+                          const failure = await actions.setCell(
+                            row.breakdownItemId,
+                            row.employeeId,
+                            column,
+                            typed,
+                          );
+                          setProblem(failure);
+                          return failure;
+                        }}
+                      />
+                    );
+                  })}
+
+                  <td className="delivery-grid-cell delivery-grid-total">
+                    {total === null || total === 0 ? '' : formatUnit(total, unit)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

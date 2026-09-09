@@ -22,21 +22,48 @@ import {
   type FlatRow,
   flattenRows,
   formatYearMonth,
+  fromUnit,
   type GridUnit,
+  type MonthBasis,
   rollUpHours,
   rollUpInUnit,
   type UnitRowValues,
   type YearMonth,
 } from '@baseline/domain';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { onDeliveryChanged } from '../data/store-changes.ts';
 import { deliveryStore } from '../data/store-instance.ts';
+
+export interface GridActions {
+  /**
+   * Writes what somebody typed into one cell.
+   *
+   * The typed value is in the unit on screen, so this is where rule R2's
+   * "editing a cell in currency divides the amount by that cell's blended rate
+   * for the month" actually happens - through `fromUnit`, which the domain
+   * already tests.
+   *
+   * Resolves with a message when it did not go through, else null. An edit that
+   * pushes somebody over capacity goes through: R5 says flagged, never blocked.
+   */
+  readonly setCell: (
+    breakdownItemId: string,
+    employeeId: string,
+    column: number,
+    typed: string,
+  ) => Promise<string | null>;
+
+  /** Puts somebody on a work package, by writing a zero into its first month. */
+  readonly addPerson: (breakdownItemId: string, employeeId: string) => Promise<string | null>;
+}
 
 export interface GridData {
   readonly horizon: readonly YearMonth[];
   readonly rows: readonly FlatRow[];
   readonly values: ReadonlyMap<BreakdownRow, UnitRowValues>;
+  /** What a cell needs to turn a typed value back into stored hours. */
+  readonly basisOf: BasisLookup;
   /** Employee id to display name. Falls back to the id when People is absent. */
   readonly employeeNames: ReadonlyMap<string, string>;
   /** Employee id, then `YYYY-MM`. Empty when capacity cannot be judged. */
@@ -50,7 +77,7 @@ export type GridState =
   | ({ readonly status: 'ready' } & GridData)
   | { readonly status: 'failed'; readonly message: string };
 
-export function useGrid(projectId: string | undefined, unit: GridUnit): GridState {
+export function useGrid(projectId: string | undefined, unit: GridUnit): GridState & GridActions {
   const [state, setState] = useState<GridState>({ status: 'loading' });
   // Bumped by the store's own change notifications, the same ones the published
   // contract forwards to People, and by People's when a rate changes. An edit on
@@ -102,7 +129,83 @@ export function useGrid(projectId: string | undefined, unit: GridUnit): GridStat
     };
   }, [projectId, unit, revision]);
 
-  return state;
+  const setCell = useCallback(
+    async (
+      breakdownItemId: string,
+      employeeId: string,
+      column: number,
+      typed: string,
+    ): Promise<string | null> => {
+      if (state.status !== 'ready') {
+        return 'The grid is not ready yet';
+      }
+
+      const month = state.horizon[column];
+      if (month === undefined) {
+        return 'That column is not in the horizon';
+      }
+
+      const trimmed = typed.trim();
+      const value = trimmed === '' ? 0 : Number(trimmed);
+      if (!Number.isFinite(value)) {
+        return `"${typed}" is not a number`;
+      }
+      if (value < 0) {
+        return 'A cell cannot hold a negative amount';
+      }
+
+      try {
+        const hours =
+          unit === 'hours'
+            ? value
+            : fromUnit(value, unit, requireBasis(state.basisOf, employeeId, month));
+
+        const store = await deliveryStore();
+        await store.setCellHours(breakdownItemId, employeeId, month, hours);
+        return null;
+      } catch (error: unknown) {
+        return messageOf(error);
+      }
+    },
+    [state, unit],
+  );
+
+  const addPerson = useCallback(
+    async (breakdownItemId: string, employeeId: string): Promise<string | null> => {
+      if (state.status !== 'ready') {
+        return 'The grid is not ready yet';
+      }
+      const month = state.horizon[0];
+      if (month === undefined) {
+        return 'This plan has no months to staff';
+      }
+
+      try {
+        const store = await deliveryStore();
+        // Zero, which is what makes the row appear without inventing effort
+        // nobody asked for.
+        await store.setCellHours(breakdownItemId, employeeId, month, 0);
+        return null;
+      } catch (error: unknown) {
+        return messageOf(error);
+      }
+    },
+    [state],
+  );
+
+  return { ...state, setCell, addPerson };
+}
+
+function requireBasis(basisOf: BasisLookup, employeeId: string, month: YearMonth): MonthBasis {
+  const known = basisOf(employeeId, month);
+  if (!known) {
+    throw new Error('People is unavailable, so only hours can be edited');
+  }
+  if (known.basis.blendedHourlyRate === 0) {
+    // `fromUnit` would refuse a cost anyway; saying it here names the month.
+    throw new Error('This month has no rate behind it, so it cannot be edited in cost');
+  }
+  return known.basis;
 }
 
 async function build(projectId: string | undefined, unit: GridUnit): Promise<GridState> {
@@ -116,6 +219,7 @@ async function build(projectId: string | undefined, unit: GridUnit): Promise<Gri
       status: 'ready',
       horizon,
       rows: [],
+      basisOf: () => undefined,
       values: new Map(),
       employeeNames: new Map(),
       capacity: new Map(),
@@ -139,6 +243,7 @@ async function build(projectId: string | undefined, unit: GridUnit): Promise<Gri
     status: 'ready',
     horizon,
     rows,
+    basisOf: people.basisOf,
     values: rollUpInUnit(roots, unit, people.basisOf, horizon),
     employeeNames: people.employeeNames,
     capacity: capacityLoad(everyAllocation, people.capacityHoursOf),
