@@ -19,10 +19,14 @@ do not belong to one application.
 
 ## Status
 
-The domain core is complete and the federation is wired and verified. The two
-remote UIs and the Docker packaging are not built yet. See
+Everything in the scope works except the Docker packaging and two things the
+shell owns: the display currency and the active user. See
 [what is not built yet](#what-is-not-built-yet) at the end - nothing in this
 README describes something that does not run.
+
+What is here: the domain, both remote UIs, persistence that survives a reload,
+the contracts the two remotes publish to each other, and failure isolation with
+a way to trigger it.
 
 ## Running it
 
@@ -80,10 +84,17 @@ apps/
   delivery/     remote: work breakdown tree and staffing grid
 packages/
   domain/       all the arithmetic. no React, no DOM, no imports from apps/
+  contracts/    what the remotes publish to each other, and the runtime config
+  seed/         reading and validating the fixture, shared by both remotes
+  theme/        design tokens, so three apps on one page agree on how they look
   mf-shared/    the federation `shared` block, declared once for all three builds
 fixtures/
   baseline-seed.json    the fixed-id seed that ships with the exercise
 ```
+
+Each app holds React and wiring. Anything worth testing that does not need React
+mounted lives in a package, or next to the code it belongs to inside the app -
+the stores and the grid's row shaping are tested that way, without a browser.
 
 ### Inside `packages/domain`
 
@@ -97,10 +108,11 @@ fixtures/
 | `units.ts`           | hours, person-months, % of capacity and cost, in both directions          |
 | `rounding.ts`        | largest-remainder distribution so displayed cells add to displayed totals |
 | `breakdown.ts`       | rolling hours up the work breakdown                                       |
-| `cost-roll-up.ts`    | rolling cost up the work breakdown                                        |
+| `unit-roll-up.ts`    | rolling the tree up in whichever unit is on screen                        |
 | `capacity.ts`        | cross-project load against a person's capacity                            |
 
-126 tests, under 200 ms, no browser involved.
+140 tests, a quarter of a second, no browser involved. 306 across the whole
+repo.
 
 ## The reference calculation
 
@@ -137,8 +149,59 @@ here they are spelled out:
 | **R1** | Rates are effective-dated, and months split | `calendar.ts`, `working-days.ts`, `rate-schedule.ts`, `allocation-cost.ts` |
 | **R2** | Four units, one truth                       | `person-month.ts`, `units.ts`                                              |
 | **R3** | Totals must add up                          | `rounding.ts`, and the horizon rule in `breakdown.ts`                      |
-| **R4** | Parents are derived                         | `breakdown.ts`, `cost-roll-up.ts`                                          |
+| **R4** | Parents are derived                         | `breakdown.ts`, `unit-roll-up.ts`                                          |
 | **R5** | Capacity is cross-project                   | `capacity.ts`                                                              |
+
+## What each app does
+
+### People
+
+A searchable register of sixty employees. Open one and their cost-rate history is
+editable: rates addable, correctable and removable, and dates in the past are
+allowed because correcting history retroactively is the point.
+
+An edit commits on blur or Enter, never per keystroke - clearing a date to retype
+it passes through an empty field on the way, and that is neither an edit worth
+saving nor one worth complaining about. Two rates starting on the same day are
+refused: the domain would cope, since sorting makes the later one win, but a
+history with two rates "from 12 March" means nothing to whoever reads it.
+
+Removing the last rate is allowed. The employee then costs nothing and their
+cells are marked unpriced, which R1 already describes, so no special case
+appears anywhere.
+
+The detail also shows the size of a person-month for the current month, which is
+free to compute and makes visible that 40 h/week is not a fixed number of hours.
+
+Somebody committed beyond their contracted hours carries a badge - a word, not
+only a colour - and the detail lists the months with the numbers. That is R5's
+first half, and the numbers come from Delivery.
+
+### Delivery
+
+Two views of the same tree, one at a time, because the grid's row headers _are_
+the breakdown tree and showing both at once would put it on screen twice.
+
+**Work breakdown** creates, renames, moves and deletes. Moving is a select of
+legal destinations rather than drag and drop: no tree or dnd package is allowed
+here, a hand-rolled drag is a lot of code keyboard users cannot operate, and a
+list of only-legal destinations makes an illegal move impossible to express. The
+options are labelled by path, because the fixture has two "Implementation"
+packages in one project and bare names left the reader guessing.
+
+Adding a child under a package that holds allocations moves them onto the child,
+in one transaction, and the form says so before you commit. Deleting says what it
+will take: "1 work package and 18 allocations will go". R4 allows either moving
+or refusing and forbids losing them quietly.
+
+**Staffing grid** is twelve months and a total, in person-months, hours, % of
+capacity or cost. Every assignment cell takes a value in whichever unit is on
+screen; derived rows do not. Cells are marked when hours below them have no rate,
+and flagged with a dagger when the person is over capacity across every project -
+that is R5's second half.
+
+Staffing somebody onto a package is a row under each package that can hold
+people. Without it a package created in the tree could never be staffed.
 
 ## Decisions
 
@@ -169,14 +232,26 @@ The cost of that choice, stated plainly: the interface is chattier, and Delivery
 depends on People at runtime for its cost column. That dependency is handled by
 degrading rather than failing - see below.
 
-The seam is one function type:
+What crosses the boundary is one small record per person and month
+(`MonthPricing` in `packages/contracts`):
 
 ```ts
-type CostOfHours = (employeeId: string, month: YearMonth, hours: number) => HoursCost;
+interface MonthPricing {
+  readonly personMonthHours: number; // weeklyHours * workingDays / 5
+  readonly blendedHourlyRate: number; // weighted by working days, 0 when unpriced
+  readonly hasUnpricedDays: boolean;
+}
 ```
 
-It is synchronous. Whoever owns the rates resolves the visible pairs first;
-nothing reaches over the network in the middle of a tree walk.
+Two numbers convert a month in all four directions, which is why one record
+serves every unit rather than one call per unit. Cost is `hours * rate` and hours
+are `cost / rate`; both hold because the blended rate does not depend on the size
+of the allocation.
+
+Delivery asks for every visible pair in one call - `pricing(refs)` - and then
+reads the snapshot synchronously while walking the tree. A call per cell would be
+up to two thousand round trips for one grid, and nothing should reach over the
+network in the middle of a render.
 
 One thing worth being explicit about: **the boundary is about data, not module
 visibility.** Both apps share `packages/domain`, so Delivery can see
@@ -236,6 +311,53 @@ The guarantee is about displayed numbers, so it is checked on integers.
 `33.4 + 33.3 + 33.3` is `99.99999999999999` as doubles, which is a different
 question from whether the column adds up on screen.
 
+### Rows add up exactly; columns may be off by one last place
+
+The grid has two directions to reconcile, and they conflict. Along a row, the
+total has to equal the sum of the twelve displayed months. Down a column, a
+parent's month cell has to equal the sum of its children in that same month. No
+independent per-row rounding satisfies both at once - fixing a row can only move
+a unit sideways, which is exactly what breaks the column it moves out of.
+
+Making both hold is two-dimensional controlled rounding: a small transportation
+problem solved over the whole visible table, not a pass over each row. That is a
+different algorithm and a different amount of work than this exercise asks for.
+
+The decision is to be exact in one direction and honest about the other. Every
+row is exact by construction - that is the direction R3 names, and the one a
+reader checks by adding up what is in front of them. A parent's month cell can
+differ from the sum of its children's month cells by one unit of the last place:
+one hundredth of a person-month, one cent, six minutes of an hour. It is written
+down here rather than left to be found.
+
+### Grid keys: Tab and Enter, not arrows
+
+A cell is a `<button>` that turns into an `<input>` when activated, so Tab
+reaches every cell, Enter opens one, Enter or blur commits, Escape abandons.
+Nothing is written on the way in or out of edit mode except on an explicit
+commit.
+
+A real grid of this size navigates with arrow keys and a roving tabindex - one
+tab stop for the whole table, arrows moving the focused cell. That is the right
+answer and it is a bigger piece of work than this exercise wants, so it is not
+here. What is here is keyboard-operable, just slower to cross.
+
+The cell is a button rather than a live input for a reason beyond keys: twelve
+months by 165 rows is about two thousand inputs, and mounting them all to have
+them sit idle is a lot of DOM for nothing.
+
+### One tab at a time
+
+An edit in a hidden panel reaches the other remote with no reload and no
+navigation, because each store publishes its own changes and the contract exposes
+`subscribe`. That works inside one document only.
+
+Two browser tabs of the app would not see each other: they share the IndexedDB
+database but nothing tells the second tab that the first one wrote. The answer is
+`BroadcastChannel` - post the same change notification the in-page subscribers
+already get, and re-read on receipt - and it is out of scope here. The
+consequence is that a second tab shows stale numbers until it is reloaded.
+
 ### Cost cannot be derived from a parent's hours
 
 Hours add up the tree; cost adds up the tree too, but it cannot be computed
@@ -243,11 +365,16 @@ anywhere except on an assignment. A leaf holding 88 hours of one person at
 EUR 89.5455/h and 88 of another at EUR 120/h has 176 hours and no rate behind
 them - dividing gives EUR 104.77/h, which is nobody's rate.
 
-So cost is computed per assignment and summed upwards, in a module separate from
-the hours roll-up. Hours need nothing from People; cost does. Keeping them apart
-is what lets the grid still render and stay editable in hours when the People
-contract is unavailable. There is no flag anywhere for that - the caller simply
-does not call the cost roll-up.
+So every non-hours unit is computed per assignment and summed upwards.
+`rollUpHours` walks the tree with no knowledge of People at all;
+`rollUpInUnit(roots, unit, basisOf, horizon)` converts at the assignment rows and
+adds the results. Hours need nothing from People; the other three need a basis
+per person and month.
+
+That is also the whole of the degradation. When the People contract is
+unavailable, `basisOf` returns nothing, the non-hours units come out as `null`
+and the grid still renders and stays editable in hours. There is no flag
+anywhere - a missing basis is the flag.
 
 ### % of capacity shows nothing on a derived row
 
@@ -383,15 +510,11 @@ compiler.
 - **Docker.** No `Dockerfile` and no `compose.yaml`, so the one-command
   `docker compose up` on port 8080 does not exist yet. `public/config.js` is
   already the seam it will be generated into.
-- **The People UI.** The employee register and rate-history editing.
-- **The Delivery UI.** The breakdown tree and the staffing grid.
-- **Persistence.** The design is IndexedDB with one database per remote behind an
-  async repository interface, so that ownership is physical rather than a
-  convention and the interface has the shape an HTTP client would. Nothing is
-  written yet.
-- **The published contracts** between the remotes. Designed and described above;
-  only the domain-side seam (`CostOfHours`) exists.
-- **Two-directional reconciliation in the grid.** A derived row's month cells have
-  to add to its row total, and each month cell has to equal the sum of its
-  children in that month. Independent rounding cannot always satisfy both, and
-  the resolution is still open.
+- **The display currency and the active user.** The shell owns both and should
+  push them into the remotes at runtime. The remotes render EUR and no user
+  today.
+- **Two-dimensional reconciliation in the grid.** Rows are exact, columns can be
+  one last place out. The reasoning is above; the algorithm is not here.
+- **Cross-tab updates.** In-page subscriptions only, no `BroadcastChannel`.
+- **Arrow-key grid navigation.** Tab and Enter work; a roving tabindex does not
+  exist.
