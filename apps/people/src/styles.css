@@ -83,3 +83,194 @@
 .people-register-unit {
   color: var(--colour-border-strong);
 }
+
+/* --- register and detail side by side --- */
+
+.people-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+@media (max-width: 60rem) {
+  .people-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.people-search-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-search {
+  width: 100%;
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.people-register-list {
+  max-height: 34rem;
+  overflow-y: auto;
+}
+
+/* The row is a button now, so the grid moves onto it. */
+.people-register-row {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--colour-border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.people-register-row:hover {
+  background: var(--colour-surface-sunken);
+}
+
+.people-register-row[aria-current='true'] {
+  background: var(--colour-surface-sunken);
+  box-shadow: inset 3px 0 0 var(--colour-accent);
+}
+
+.people-register-list > li:last-child .people-register-row {
+  border-bottom: none;
+}
+
+/* --- one employee --- */
+
+.people-detail {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+}
+
+.people-detail-empty {
+  align-self: start;
+}
+
+.people-detail-name {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+}
+
+.people-detail-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+
+.people-detail-facts dt {
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-detail-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.people-detail-subheading {
+  margin-bottom: var(--space-1);
+}
+
+.people-detail-hint {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* --- rate history --- */
+
+.people-rate-list {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.people-rate-row {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.people-rate-fields {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.people-rate-date,
+.people-rate-cost {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.people-rate-cost {
+  width: 6.5rem;
+  text-align: right;
+}
+
+.people-rate-date[aria-invalid='true'],
+.people-rate-cost[aria-invalid='true'] {
+  border-color: var(--colour-attention);
+  background: var(--colour-attention-surface);
+}
+
+.people-rate-unit {
+  margin-right: auto;
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-rate-remove,
+.people-rate-add {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.people-rate-remove:hover {
+  border-color: var(--colour-attention);
+  color: var(--colour-attention);
+}
+
+.people-rate-add {
+  border-color: transparent;
+  background: var(--colour-accent);
+  color: var(--colour-accent-text);
+}
+
+.people-rate-problems {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--colour-attention-surface);
+  color: var(--colour-attention);
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.people-add-rate {
+  padding-top: var(--space-2);
+}
