@@ -28,7 +28,7 @@ function allocation(
   month: YearMonth,
   hours: number,
 ): Allocation {
-  return { id, breakdownItemId, employeeId, month, hours };
+  return { id, breakdownItemId, employeeId, month, hours, editedAt: 0 };
 }
 
 /**

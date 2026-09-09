@@ -34,7 +34,7 @@ function allocation(
   month: YearMonthTuple,
   hours: number,
 ): Allocation {
-  return { id, breakdownItemId, employeeId, month: yearMonth(...month), hours };
+  return { id, breakdownItemId, employeeId, month: yearMonth(...month), hours, editedAt: 0 };
 }
 
 type YearMonthTuple = readonly [year: number, month: number];

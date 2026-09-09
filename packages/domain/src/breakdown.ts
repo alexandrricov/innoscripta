@@ -33,6 +33,11 @@ export interface BreakdownItem {
  *
  * `hours` is the canonical unit. The seed file carries person-months and is
  * converted once, on import.
+ *
+ * `editedAt` orders edits. Rule R5 asks Delivery to name the most recently
+ * edited allocation contributing to an over-capacity person-month, and the seed
+ * has nothing to order by, so the store stamps it: a monotonic counter or epoch
+ * milliseconds, either works as long as it only grows.
  */
 export interface Allocation {
   readonly id: string;
@@ -40,6 +45,7 @@ export interface Allocation {
   readonly employeeId: string;
   readonly month: YearMonth;
   readonly hours: number;
+  readonly editedAt: number;
 }
 
 interface RowTotals {
