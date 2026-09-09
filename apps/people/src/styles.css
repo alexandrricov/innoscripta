@@ -1,0 +1,85 @@
+/*
+ * People's own styles. Every class is prefixed `people-` because three
+ * applications render into one document and plain class names would collide.
+ * Shared tokens come from @baseline/theme.
+ */
+
+.people-app {
+  padding: var(--space-6);
+}
+
+.people-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.people-header h2 {
+  font-size: var(--text-xl);
+}
+
+.people-count {
+  margin: 0;
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-notice {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+}
+
+.people-notice-failed {
+  border-color: var(--colour-attention);
+  background: var(--colour-attention-surface);
+  color: var(--colour-attention);
+}
+
+.people-register-list {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+  list-style: none;
+}
+
+.people-register-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) auto;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.people-register-row:last-child {
+  border-bottom: none;
+}
+
+.people-register-name {
+  font-weight: 500;
+}
+
+.people-register-role {
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-register-hours {
+  color: var(--colour-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.people-register-unit {
+  color: var(--colour-border-strong);
+}
