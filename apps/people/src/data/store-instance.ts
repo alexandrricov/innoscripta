@@ -13,6 +13,7 @@ import { createIndexedDbPeopleStore } from './indexeddb-people-store.ts';
 import { openPeopleDatabase, seedIfEmpty } from './people-database.ts';
 import type { PeopleStore } from './people-store.ts';
 import { fetchPeopleSlice } from './seed-slice.ts';
+import { withChangeNotifications } from './store-changes.ts';
 
 let pending: Promise<PeopleStore> | undefined;
 
@@ -33,5 +34,7 @@ async function build(): Promise<PeopleStore> {
   // fetched again, which is observable: the request is absent on a reload.
   await seedIfEmpty(db, fetchPeopleSlice);
 
-  return createIndexedDbPeopleStore(db);
+  // Wrapped so every write announces itself, which is what the published
+  // contract's subscribe() forwards to Delivery.
+  return withChangeNotifications(createIndexedDbPeopleStore(db));
 }

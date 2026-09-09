@@ -73,6 +73,10 @@ export default {
       filename: REMOTE_ENTRY_FILENAME,
       exposes: {
         './App': './src/App.tsx',
+        // The typed contract the other remote consumes. Separate from the UI
+        // on purpose: a consumer that only needs data must not drag React
+        // components across the boundary.
+        './contract': './src/contract.ts',
       },
       shared: SHARED_DEPENDENCIES,
       // Off on purpose. The federation type-distribution feature starts its own
@@ -89,6 +93,7 @@ export default {
       // not for this page to load.
       chunks: ['main'],
     }),
+    new rspack.CopyRspackPlugin({ patterns: [{ from: 'public' }] }),
     isDev ? new ReactRefreshRspackPlugin() : null,
   ].filter(Boolean),
 };

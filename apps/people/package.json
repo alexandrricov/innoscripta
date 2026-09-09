@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@baseline/contracts": "workspace:*",
     "@baseline/domain": "workspace:*",
     "@baseline/seed": "workspace:*",
     "@baseline/theme": "workspace:*",
