@@ -131,7 +131,7 @@ the stores and the grid's row shaping are tested that way, without a browser.
 | `unit-roll-up.ts`    | rolling the tree up in whichever unit is on screen                        |
 | `capacity.ts`        | cross-project load against a person's capacity                            |
 
-140 tests, a quarter of a second, no browser involved. 306 across the whole
+142 tests, a quarter of a second, no browser involved. 320 across the whole
 repo.
 
 ## The reference calculation
@@ -216,9 +216,16 @@ or refusing and forbids losing them quietly.
 
 **Staffing grid** is twelve months and a total, in person-months, hours, % of
 capacity or cost. Every assignment cell takes a value in whichever unit is on
-screen; derived rows do not. Cells are marked when hours below them have no rate,
-and flagged with a dagger when the person is over capacity across every project -
-that is R5's second half.
+screen; derived rows do not. A cell is flagged with a dagger when the person is
+over capacity across every project - that is R5's second half.
+
+R1's other half is the unpriced mark, and it is per month rather than per row: a
+person can be unpriced in April and priced in December. Such a cell shows `0.00`
+with an asterisk rather than a blank, because a blank reads as "nobody is
+assigned here" instead of "these hours have no rate". Derived cells above it
+carry the same mark, so a total that is short by whatever is unpriced says so
+without opening the tree. Cost only - a person-month is perfectly well defined
+without a rate, and marking it there would be noise about a correct number.
 
 Staffing somebody onto a package is a row under each package that can hold
 people. Without it a package created in the tree could never be staffed.

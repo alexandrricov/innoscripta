@@ -205,6 +205,41 @@ describe('% of capacity', () => {
 });
 
 describe('unpriced hours', () => {
+  it('are flagged on the month that holds them, not just on the row', () => {
+    // R1: an allocation in a month before the employee's first rate costs zero
+    // and the cell is marked. March is unpriced for this newcomer, April is not
+    // in their horizon at all, so only the first column carries the flag.
+    const allocations = [allocation('a1', 'leafOne', 'newcomer', MARCH_2026, 88)];
+    const roots = rollUpHours(ITEMS, allocations, HORIZON);
+    const values = rollUpInUnit(roots, 'cost', knownBases, HORIZON);
+    const byId = itemsById(roots);
+
+    expect(values.get(assignmentOf(roots, 'newcomer'))?.unpricedByMonth).toStrictEqual([
+      true,
+      false,
+    ]);
+    expect(values.get(byId.get('root') as BreakdownRow)?.unpricedByMonth).toStrictEqual([
+      true,
+      false,
+    ]);
+    expect(values.get(byId.get('leafTwo') as BreakdownRow)?.unpricedByMonth).toStrictEqual([
+      false,
+      false,
+    ]);
+  });
+
+  it('are not a concern of any unit but cost', () => {
+    // A person-month is well defined without a rate, so calling that cell
+    // unpriced would be noise about a number that is exactly right.
+    const allocations = [allocation('a1', 'leafOne', 'newcomer', MARCH_2026, 88)];
+    const roots = rollUpHours(ITEMS, allocations, HORIZON);
+
+    for (const unit of ['hours', 'personMonths', 'percent'] as const) {
+      const values = rollUpInUnit(roots, unit, knownBases, HORIZON);
+      expect(values.get(assignmentOf(roots, 'newcomer'))?.hasUnpricedHours).toBe(false);
+    }
+  });
+
   it('are flagged on the assignment and carried up the tree', () => {
     const allocations = [allocation('a1', 'leafOne', 'newcomer', MARCH_2026, 88)];
     const roots = rollUpHours(ITEMS, allocations, HORIZON);

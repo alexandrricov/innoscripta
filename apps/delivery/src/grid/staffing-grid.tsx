@@ -191,6 +191,7 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
 
               const own = values.get(row);
               const { cells, total } = displayed(own, unit, horizon.length, currency);
+              const unpricedAt = (column: number): boolean => own?.unpricedByMonth[column] === true;
               const isActiveUser = row.kind === 'assignment' && row.employeeId === user?.employeeId;
 
               return (
@@ -227,9 +228,27 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
                     // type rather than a check: an item row has no employeeId,
                     // so there is nowhere for an edit to land.
                     if (row.kind !== 'assignment') {
+                      const unpriced = unpricedAt(column);
                       return (
-                        <td key={monthKey} className="delivery-grid-cell">
-                          {value === null || value === 0 ? '' : show(value)}
+                        <td
+                          key={monthKey}
+                          className={`delivery-grid-cell${
+                            unpriced ? ' delivery-grid-unpriced-cell' : ''
+                          }`}
+                        >
+                          {value === null || (value === 0 && !unpriced) ? '' : show(value)}
+                          {/* A derived cell is marked for the same reason as an
+                              assignment cell: the number below it is short by
+                              however much has no rate. */}
+                          {unpriced && (
+                            <>
+                              <span aria-hidden="true"> *</span>
+                              <span className="bl-visually-hidden">
+                                {' '}
+                                includes hours that no rate covers
+                              </span>
+                            </>
+                          )}
                         </td>
                       );
                     }
@@ -247,6 +266,7 @@ export function StaffingGrid({ data, actions, unit }: StaffingGridProps) {
                         unit={unit}
                         readOnlyBecause={readOnlyBecause(row.employeeId, column)}
                         load={loadOf(row.employeeId, column)}
+                        unpriced={unpricedAt(column)}
                         onCommit={async (typed) => {
                           const failure = await actions.setCell(
                             row.breakdownItemId,

@@ -10,11 +10,20 @@ interface GridCellProps {
   /** Absent when the cell can be edited; a reason when it cannot. */
   readonly readOnlyBecause: string | undefined;
   readonly load: CapacityLoad | undefined;
+  /** True when this month holds hours that no rate covers (rule R1). */
+  readonly unpriced: boolean;
   /** Resolves with a message when the write did not go through, else null. */
   readonly onCommit: (typed: string) => Promise<string | null>;
 }
 
-export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridCellProps) {
+export function GridCell({
+  value,
+  unit,
+  readOnlyBecause,
+  load,
+  unpriced,
+  onCommit,
+}: GridCellProps) {
   // Read here rather than passed down: two thousand cells would each carry the
   // same prop through the same two components to reach the same value.
   const { currency } = useHostSession();
@@ -27,10 +36,23 @@ export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridC
   // Two strings, not one. `shown` carries the currency symbol; `typable` is the
   // digits that go into a `type="number"` input, which would reject "$8510.40"
   // and silently blank itself.
-  const typable = value === null || value === 0 ? '' : formatUnit(value, unit);
+  // Zero is normally shown as nothing - an empty cell reads better than a grid
+  // of "0.00". An unpriced cell is the exception: R1 says the allocation costs
+  // zero and the cell is marked, and a blank cell would say "nobody is assigned
+  // here" instead of "these hours have no rate".
+  const typable = value === null || (value === 0 && !unpriced) ? '' : formatUnit(value, unit);
   const shown =
     typable !== '' && unit === 'cost' ? formatMoneyAmount(value ?? 0, currency) : typable;
   const over = load?.isOversubscribed === true;
+
+  // A different mark from the over-capacity dagger, because it says something
+  // else: this number is not wrong, it is missing a rate.
+  const unpricedMark = unpriced && (
+    <>
+      <span aria-hidden="true"> *</span>
+      <span className="bl-visually-hidden"> no rate covers these hours, so they cost nothing</span>
+    </>
+  );
 
   const flag = over && shown !== '' && (
     <>
@@ -47,12 +69,15 @@ export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridC
     </>
   );
 
-  const className = `delivery-grid-cell${over ? ' delivery-grid-over' : ''}`;
+  const className = `delivery-grid-cell${over ? ' delivery-grid-over' : ''}${
+    unpriced ? ' delivery-grid-unpriced-cell' : ''
+  }`;
 
   if (readOnlyBecause !== undefined) {
     return (
       <td className={className} title={readOnlyBecause}>
         {shown}
+        {unpricedMark}
         {flag}
       </td>
     );
@@ -74,6 +99,7 @@ export function GridCell({ value, unit, readOnlyBecause, load, onCommit }: GridC
           }}
         >
           {shown === '' ? <span className="bl-visually-hidden">empty, edit</span> : shown}
+          {unpricedMark}
           {flag}
         </button>
       </td>

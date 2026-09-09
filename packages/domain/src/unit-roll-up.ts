@@ -56,7 +56,20 @@ export interface UnitRowValues {
   readonly byMonth: readonly (number | null)[];
   /** Null when any month of the row is. */
   readonly total: number | null;
-  /** True when hours below this row have no rate behind them. */
+  /**
+   * Per month: this cell holds hours that no rate covers.
+   *
+   * Rule R1 says such an allocation costs zero *and the cell is marked*, so the
+   * flag has to be per month rather than per row - a person can be unpriced in
+   * March and priced in April, and a blank cell would otherwise read as "nobody
+   * is assigned here" rather than "this is not priced".
+   *
+   * Only ever true in `cost`. Hours need no rate, and neither person-months nor
+   * % of capacity go anywhere near one; flagging them would be noise about a
+   * number that is perfectly well defined.
+   */
+  readonly unpricedByMonth: readonly boolean[];
+  /** True when any month below this row holds hours with no rate behind them. */
   readonly hasUnpricedHours: boolean;
 }
 
@@ -108,7 +121,7 @@ function assignmentValues(
   horizon: readonly YearMonth[],
 ): UnitRowValues {
   const byMonth: (number | null)[] = [];
-  let hasUnpricedHours = false;
+  const unpricedByMonth: boolean[] = [];
 
   horizon.forEach((month, column) => {
     const hours = row.hoursByMonth[column] ?? 0;
@@ -116,19 +129,19 @@ function assignmentValues(
     // Hours need nobody. That is the whole reason they are the stored unit.
     if (unit === 'hours') {
       byMonth.push(hours);
+      unpricedByMonth.push(false);
       return;
     }
 
     const known = basisOf(row.employeeId, month);
     if (!known) {
       byMonth.push(null);
+      unpricedByMonth.push(false);
       return;
     }
 
     // An empty cell is not an unpriced one: there are no hours to price.
-    if (hours > 0 && known.hasUnpricedDays) {
-      hasUnpricedHours = true;
-    }
+    unpricedByMonth.push(unit === 'cost' && hours > 0 && known.hasUnpricedDays);
 
     byMonth.push(toUnit(hours, unit, known.basis));
   });
@@ -138,7 +151,8 @@ function assignmentValues(
     // Adding percentages of different months would produce a number with no
     // meaning - six months at 50% is not 300% of anything.
     total: unit === 'percent' ? null : sumOrNull(byMonth),
-    hasUnpricedHours,
+    unpricedByMonth,
+    hasUnpricedHours: unpricedByMonth.some(Boolean),
   };
 }
 
@@ -150,12 +164,17 @@ function itemValues(
   values: Map<BreakdownRow, UnitRowValues>,
 ): UnitRowValues {
   const children = row.children.map((child) => valueOf(child, unit, basisOf, horizon, values));
-  const hasUnpricedHours = children.some((child) => child.hasUnpricedHours);
+  // A parent is unpriced in a month when any row beneath it is, which is what
+  // lets a reader see that a total is understated without opening the tree.
+  const unpricedByMonth = horizon.map((_month, column) =>
+    children.some((child) => child.unpricedByMonth[column] === true),
+  );
+  const hasUnpricedHours = unpricedByMonth.some(Boolean);
 
   // A percentage of a work package's capacity is not a thing. Reporting a sum
   // of percentages would read as a load figure and mean nothing.
   if (unit === 'percent') {
-    return { byMonth: horizon.map(() => null), total: null, hasUnpricedHours };
+    return { byMonth: horizon.map(() => null), total: null, unpricedByMonth, hasUnpricedHours };
   }
 
   const byMonth = horizon.map((_month, column) => {
@@ -171,7 +190,7 @@ function itemValues(
     return total;
   });
 
-  return { byMonth, total: sumOrNull(byMonth), hasUnpricedHours };
+  return { byMonth, total: sumOrNull(byMonth), unpricedByMonth, hasUnpricedHours };
 }
 
 function sumOrNull(values: readonly (number | null)[]): number | null {

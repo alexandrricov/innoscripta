@@ -412,6 +412,13 @@
   font-size: var(--text-sm);
 }
 
+/* A cell whose hours no rate covers (R1). Muted rather than alarming: the
+   number is correct, it is the rate that is missing. The asterisk carries the
+   meaning, so this is never colour alone. */
+.delivery-grid-unpriced-cell {
+  color: var(--colour-text-muted);
+}
+
 /* The signed-in person's own assignment rows. */
 .delivery-grid-you {
   color: var(--colour-text-muted);
